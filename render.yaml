@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: beauty-decision-assistant-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.backend.main
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.3
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
