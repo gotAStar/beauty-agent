@@ -42,8 +42,9 @@ http://127.0.0.1:8000
 ### Frontend on Vercel
 
 1. Import this repository into Vercel.
-2. Set the production environment variable `API_BASE_URL` to your Render backend URL, such as `https://your-api.onrender.com`.
-3. Deploy. Vercel will use `vercel.json` and build the static frontend into `dist/frontend`.
+2. Set the Root Directory to `app/frontend`.
+3. Set the production environment variable `API_BASE_URL` to your Render backend URL, such as `https://your-api.onrender.com`.
+4. Deploy. Vercel will use `app/frontend/vercel.json` and build the static frontend into `app/frontend/dist`.
 
 ## Current scope
 
