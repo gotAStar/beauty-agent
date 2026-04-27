@@ -10,16 +10,30 @@ function getApiUrl(path) {
 }
 
 async function request(path, payload) {
-  const response = await fetch(getApiUrl(path), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+  let response;
+
+  try {
+    response = await fetch(getApiUrl(path), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    throw new Error(
+      `Unable to reach the API at ${getApiUrl(path)}. Check the Render service URL and CORS settings.`,
+    );
+  }
 
   if (!response.ok) {
-    throw new Error(path === "/api/review" ? "Unable to submit review." : "Unable to load recommendations.");
+    const responseText = await response.text();
+    const errorMessage = responseText.trim() || response.statusText || "Unknown error";
+    throw new Error(
+      path === "/api/review"
+        ? `Unable to submit review. ${errorMessage}`
+        : `Unable to load recommendations. ${errorMessage}`,
+    );
   }
 
   return response.json();

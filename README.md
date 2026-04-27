@@ -57,6 +57,7 @@ Set `API_BASE_URL=http://127.0.0.1:8000` if you want the Vite dev server to call
 1. Create a new Render Blueprint or Web Service from this repository.
 2. If using the Blueprint, Render will read `render.yaml`.
 3. Set `CORS_ALLOW_ORIGINS` to your Vercel frontend URL, such as `https://your-app.vercel.app`.
+   The backend also allows `https://*.vercel.app` by default through `CORS_ALLOW_ORIGIN_REGEX`.
 4. Deploy and copy the Render service URL.
 
 ### Frontend on Vercel

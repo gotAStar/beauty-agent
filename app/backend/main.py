@@ -31,6 +31,13 @@ def get_allowed_origins() -> list[str]:
 
     return [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
 
+
+def get_allowed_origin_regex() -> str:
+    return os.getenv(
+        "CORS_ALLOW_ORIGIN_REGEX",
+        r"https://.*\.vercel\.app$",
+    )
+
 app = FastAPI(
     title="Beauty Decision Assistant",
     description="Minimal MVP scaffold for personalized beauty recommendations.",
@@ -40,6 +47,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_allowed_origins(),
+    allow_origin_regex=get_allowed_origin_regex(),
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
