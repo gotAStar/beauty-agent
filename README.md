@@ -64,6 +64,8 @@ Set `API_BASE_URL=http://127.0.0.1:8000` if you want the Vite dev server to call
 
 1. Import this repository into Vercel.
 2. Set the Root Directory to `app/frontend`.
+   If Vercel is trying to detect FastAPI or shows `No fastapi entrypoint found`, it is building the wrong directory.
+   In that case, change the Root Directory to `app/frontend` and set the Framework Preset to `Vite` or `Other`.
 3. Set the production environment variable `API_BASE_URL` to your Render backend URL. The current default fallback is `https://beauty-agent-cufm.onrender.com`.
 4. Deploy. Vercel will use `app/frontend/vercel.json` and build the React app into `app/frontend/dist`.
 

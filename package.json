@@ -1,0 +1,7 @@
+{
+  "name": "beauty-agent-root",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix app/frontend run build"
+  }
+}
