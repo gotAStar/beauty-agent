@@ -60,7 +60,7 @@ export function buildSignalItems(recommendation) {
     signals.push({
       icon: "⭐",
       tone: "neutral",
-      text: `Rated ${recommendation.rating.toFixed(1)}/5 with a recommendation score of ${recommendation.score.toFixed(1)}.`,
+      text: `Rated ${recommendation.rating.toFixed(1)}/5 across ${recommendation.review_count} review(s) with a recommendation score of ${recommendation.score.toFixed(1)}.`,
     });
   }
 

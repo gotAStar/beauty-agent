@@ -24,17 +24,23 @@ export default function RecommendationCard({
             {`Top ${index + 1}`}
           </span>
           <h3 className="font-display text-[1.95rem] leading-[0.95] tracking-[-0.02em] text-[var(--text)]">
-            {recommendation.product}
+            {recommendation.label}
           </h3>
           <p className="mt-3 flex flex-wrap gap-2.5 text-[0.92rem] text-[var(--muted)]">
             <span className="rounded-full bg-[#fbf8fa] px-2.5 py-2">
               {formatCategory(recommendation.category)}
             </span>
             <span className="rounded-full bg-[#fbf8fa] px-2.5 py-2">
+              {`ASIN ${recommendation.asin}`}
+            </span>
+            <span className="rounded-full bg-[#fbf8fa] px-2.5 py-2">
               {formatCategory(recommendation.skin_type)} skin
             </span>
             <span className="rounded-full bg-[#fbf8fa] px-2.5 py-2">
               {recommendation.rating.toFixed(1)} rating
+            </span>
+            <span className="rounded-full bg-[#fbf8fa] px-2.5 py-2">
+              {`${recommendation.review_count} reviews`}
             </span>
           </p>
         </div>
@@ -53,7 +59,7 @@ export default function RecommendationCard({
       <ul className="mt-[18px] grid gap-3">
         {signals.map((signal) => (
           <li
-            key={`${recommendation.product}-${signal.icon}-${signal.text}`}
+            key={`${recommendation.asin}-${signal.icon}-${signal.text}`}
             className="grid grid-cols-[24px_1fr] items-start gap-3 rounded-2xl bg-[#fcfafb] px-[14px] py-3"
           >
             <span className={`text-base leading-6 ${toneClassMap[signal.tone]}`}>
@@ -70,9 +76,19 @@ export default function RecommendationCard({
         <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--text)]">
           {`⭐ Score ${recommendation.score.toFixed(1)}`}
         </span>
-        <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--muted)]">
-          {`Ad signal ${recommendation.ad_score.toFixed(2)}`}
-        </span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--muted)]">
+            {`Ad signal ${recommendation.ad_score.toFixed(2)}`}
+          </span>
+          <a
+            href={recommendation.amazon_url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex rounded-full border border-[var(--accent-strong)] bg-[var(--accent-soft)] px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--accent-strong)] transition duration-200 hover:-translate-y-0.5 hover:shadow-soft"
+          >
+            View on Amazon
+          </a>
+        </div>
       </div>
     </article>
   );

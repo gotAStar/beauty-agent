@@ -18,10 +18,14 @@ class ProductReview(BaseModel):
 
 
 class Recommendation(BaseModel):
-    product: str
+    asin: str
+    label: str
     category: str
     skin_type: str
     rating: float
+    review_count: int
+    keyword_frequency: int
+    amazon_url: str
     score: float
     review: str
     ad_score: float

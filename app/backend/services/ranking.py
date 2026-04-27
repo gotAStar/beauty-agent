@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from statistics import mean
 
@@ -20,22 +20,43 @@ SUPPORTING_REVIEWS_WEIGHT = 10
 AD_PENALTY_WEIGHT = 20
 KEYWORD_HIT_CAP = 5
 SUPPORTING_REVIEW_CAP = 3
+PRODUCT_LABEL_KEYWORDS = {
+    "Hydrating": ["hydrating", "hydrate", "hydration", "moisture", "moisturizing"],
+    "Acne": ["acne", "breakout", "breakouts", "blemish", "blemishes"],
+    "Oil Control": ["oil control", "oil", "oily", "shine", "balance", "greasy"],
+    "Brightening": ["brightening", "dark spots", "even tone", "fade marks"],
+    "Soothing": ["soothing", "calming", "gentle", "redness"],
+    "Smoothing": ["smooth", "smoother", "texture", "refine", "soft"],
+}
+CATEGORY_LABELS = {
+    "cleanser": "Cleanser",
+    "treatment": "Treatment",
+    "moisturizer": "Moisturizer",
+    "sunscreen": "Sunscreen",
+    "skincare": "Product",
+}
 
 
 @dataclass
 class ProductAggregate:
-    product: str
+    asin: str
+    label: str
     category: str
     skin_type: str
     average_rating: float
     representative_review: ProductReview
     supporting_reviews: list[ProductReview]
+    review_count: int
     matched_skin_type: bool
     concern_hits: dict[str, list[str]]
     total_keyword_hits: int
     average_ad_score: float
     score_breakdown: dict[str, float]
     score: float
+
+
+def build_amazon_url(asin: str) -> str:
+    return f"https://www.amazon.com/dp/{asin}"
 
 
 def count_concern_keyword_frequency(
@@ -72,6 +93,65 @@ def aggregate_concern_hits(
     return aggregated_hits, total_keyword_hits
 
 
+def infer_category(reviews: list[ProductReview]) -> str:
+    categories = [review.category.strip().lower() for review in reviews if review.category.strip()]
+    if not categories:
+        return "skincare"
+
+    return Counter(categories).most_common(1)[0][0]
+
+
+def infer_category_label(reviews: list[ProductReview], category: str) -> str:
+    if category != "skincare":
+        return CATEGORY_LABELS.get(category, category.title() or "Product")
+
+    normalized_reviews = " ".join(review.review.strip().lower() for review in reviews)
+    if any(keyword in normalized_reviews for keyword in ["cleanser", "wash", "foam"]):
+        return "Cleanser"
+    if any(keyword in normalized_reviews for keyword in ["serum", "treatment", "gel", "spot"]):
+        return "Treatment"
+    if any(keyword in normalized_reviews for keyword in ["cream", "lotion", "moisturizer", "moisture"]):
+        return "Moisturizer"
+    if any(keyword in normalized_reviews for keyword in ["spf", "sunscreen", "sun screen"]):
+        return "Sunscreen"
+
+    return "Product"
+
+
+def generate_product_label(reviews: list[ProductReview], category: str) -> str:
+    normalized_reviews = " ".join(review.review.strip().lower() for review in reviews)
+    label_counts = {
+        label: sum(normalized_reviews.count(keyword) for keyword in keywords)
+        for label, keywords in PRODUCT_LABEL_KEYWORDS.items()
+    }
+    top_label, top_count = max(label_counts.items(), key=lambda item: item[1], default=("", 0))
+    category_label = infer_category_label(reviews, category)
+
+    if top_count > 0:
+        return f"{top_label} {category_label}"
+
+    return category_label
+
+
+def select_skin_type(
+    reviews: list[ProductReview],
+    normalized_skin_type: str,
+) -> tuple[str, bool]:
+    normalized_review_skin_types = [review.skin_type.strip().lower() for review in reviews]
+
+    if normalized_skin_type in normalized_review_skin_types:
+        matching_review = next(
+            review for review in reviews if review.skin_type.strip().lower() == normalized_skin_type
+        )
+        return matching_review.skin_type, True
+
+    dominant_skin_type = Counter(normalized_review_skin_types).most_common(1)[0][0]
+    matching_review = next(
+        review for review in reviews if review.skin_type.strip().lower() == dominant_skin_type
+    )
+    return matching_review.skin_type, False
+
+
 def select_representative_review(
     user_profile: UserProfileRequest,
     reviews: list[ProductReview],
@@ -79,6 +159,7 @@ def select_representative_review(
     return max(
         reviews,
         key=lambda review: (
+            review.skin_type.strip().lower() == user_profile.skin_type.strip().lower(),
             len(get_concern_keyword_hits(user_profile, review)),
             count_concern_keyword_frequency(user_profile, review),
             review.rating,
@@ -95,7 +176,9 @@ def build_score_breakdown(
     supporting_reviews_count = len(reviews)
     average_rating = mean(review.rating for review in reviews)
     average_ad_score = mean(calculate_ad_score(review) for review in reviews)
-    matched_skin_type = reviews[0].skin_type.strip().lower() == normalized_skin_type
+    matched_skin_type = any(
+        review.skin_type.strip().lower() == normalized_skin_type for review in reviews
+    )
     normalized_concerns = get_normalized_concerns(user_profile)
 
     skin_type_score = float(SKIN_TYPE_WEIGHT if matched_skin_type else 0.0)
@@ -145,11 +228,13 @@ def build_product_aggregate(
     product_reviews: list[ProductReview],
     normalized_skin_type: str,
 ) -> ProductAggregate:
+    grouped_category = infer_category(product_reviews)
     representative_review = select_representative_review(user_profile, product_reviews)
+    selected_skin_type, matched_skin_type = select_skin_type(product_reviews, normalized_skin_type)
     average_rating = round(mean(review.rating for review in product_reviews), 2)
     (
         score_breakdown,
-        matched_skin_type,
+        _,
         concern_hits,
         total_keyword_hits,
         average_ad_score,
@@ -172,12 +257,14 @@ def build_product_aggregate(
     )
 
     return ProductAggregate(
-        product=representative_review.product,
-        category=representative_review.category,
-        skin_type=representative_review.skin_type,
+        asin=representative_review.product,
+        label=generate_product_label(product_reviews, grouped_category),
+        category=grouped_category,
+        skin_type=selected_skin_type,
         average_rating=average_rating,
         representative_review=representative_review,
         supporting_reviews=product_reviews,
+        review_count=len(product_reviews),
         matched_skin_type=matched_skin_type,
         concern_hits=concern_hits,
         total_keyword_hits=total_keyword_hits,
@@ -193,10 +280,10 @@ def rank_products(
     limit: int = 3,
 ) -> tuple[list[Recommendation], str]:
     normalized_skin_type = user_profile.skin_type.strip().lower()
-    grouped_reviews: dict[tuple[str, str, str], list[ProductReview]] = defaultdict(list)
+    grouped_reviews: dict[str, list[ProductReview]] = defaultdict(list)
 
     for review in reviews:
-        grouped_reviews[(review.product, review.category, review.skin_type)].append(review)
+        grouped_reviews[review.product].append(review)
 
     product_aggregates = [
         build_product_aggregate(user_profile, product_reviews, normalized_skin_type)
@@ -225,10 +312,14 @@ def rank_products(
 
     recommendations = [
         Recommendation(
-            product=aggregate.product,
+            asin=aggregate.asin,
+            label=aggregate.label,
             category=aggregate.category,
             skin_type=aggregate.skin_type,
             rating=aggregate.average_rating,
+            review_count=aggregate.review_count,
+            keyword_frequency=aggregate.total_keyword_hits,
+            amazon_url=build_amazon_url(aggregate.asin),
             score=aggregate.score,
             review=aggregate.representative_review.review,
             ad_score=aggregate.average_ad_score,

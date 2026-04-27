@@ -236,7 +236,7 @@ export default function RecommendationView({
 
             {recommendationData ? (
               <div className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--text)]">
-                {`Trust score ${recommendationData.trust_score}/100 • ${recommendationData.total_reviews_analyzed} reviews analyzed • ${recommendationData.filtered_reviews_count} filtered`}
+                {`Trust score ${recommendationData.trust_score}/100 - ${recommendationData.total_reviews_analyzed} reviews analyzed - ${recommendationData.filtered_reviews_count} filtered`}
               </div>
             ) : null}
           </div>
@@ -254,7 +254,7 @@ export default function RecommendationView({
             <div className="mt-[18px] grid gap-4">
               {recommendationData.recommendations.slice(0, 3).map((recommendation, index) => (
                 <RecommendationCard
-                  key={`${recommendation.product}-${index}`}
+                  key={`${recommendation.asin}-${index}`}
                   recommendation={recommendation}
                   index={index}
                   trustScore={recommendationData.trust_score}

@@ -227,11 +227,14 @@ def test_rank_products_prioritizes_skin_type_match_then_rating() -> None:
     )
 
     assert strategy == "exact_match_prioritized"
-    assert [recommendation.product for recommendation in recommendations] == [
+    assert [recommendation.asin for recommendation in recommendations] == [
         "Match High",
         "Match Mid",
         "Fallback Top",
     ]
+    assert recommendations[0].label == "Oil Control Product"
+    assert recommendations[0].review_count == 1
+    assert recommendations[0].amazon_url == "https://www.amazon.com/dp/Match High"
     assert recommendations[0].matched_skin_type is True
     assert recommendations[2].matched_skin_type is False
     assert recommendations[0].ad_score == 0.0
@@ -266,7 +269,8 @@ def test_rank_products_boosts_concern_matches_in_review_text() -> None:
     )
 
     assert strategy == "exact_match_prioritized"
-    assert recommendations[0].product == "Acne Support Serum"
+    assert recommendations[0].asin == "Acne Support Serum"
+    assert recommendations[0].label == "Acne Product"
     assert "Helps reduce acne and breakouts fast" in recommendations[0].reason
     assert "Positive signals:" in recommendations[0].reason
     assert "Negative signals:" in recommendations[0].reason
@@ -301,7 +305,8 @@ def test_rank_products_boosts_products_with_more_supporting_reviews() -> None:
         reviews,
     )
 
-    assert recommendations[0].product == "Acne Rescue"
+    assert recommendations[0].asin == "Acne Rescue"
+    assert recommendations[0].review_count == 2
     assert recommendations[0].score > recommendations[1].score
     assert "supported by 2 valid reviews" in recommendations[0].reason
 
@@ -334,7 +339,7 @@ def test_rank_products_falls_back_to_highest_rated_when_no_match() -> None:
     )
 
     assert strategy == "highest_rated_fallback"
-    assert [recommendation.product for recommendation in recommendations] == [
+    assert [recommendation.asin for recommendation in recommendations] == [
         "Dry Pick",
         "Combo Pick",
         "Sensitive Pick",
@@ -362,7 +367,7 @@ def test_rank_products_penalizes_mild_promotional_language() -> None:
         reviews,
     )
 
-    assert recommendations[0].product == "Balanced Gel"
+    assert recommendations[0].asin == "Balanced Gel"
     assert recommendations[1].ad_score > recommendations[0].ad_score
     assert "ad penalty" in recommendations[1].reason
 
@@ -378,7 +383,8 @@ def test_profile_route_returns_top_three_recommendations(test_db) -> None:
     assert response.total_reviews_analyzed == 4
     assert 0 <= response.trust_score <= 100
     assert len(response.recommendations) == 3
-    assert response.recommendations[0].product == "Lightweight Moisturizer"
+    assert response.recommendations[0].asin == "Lightweight Moisturizer"
+    assert response.recommendations[0].label == "Oil Control Moisturizer"
     assert response.recommendations[0].score >= response.recommendations[1].score
 
 
@@ -394,7 +400,8 @@ def test_profile_route_uses_concern_keywords_for_dataset(test_db) -> None:
         )
     )
 
-    assert response.recommendations[0].product == "Hydrating Cream"
+    assert response.recommendations[0].asin == "Hydrating Cream"
+    assert response.recommendations[0].label == "Hydrating Moisturizer"
     assert "Very moisturizing and gentle" in response.recommendations[0].reason
     assert "dryness support" in response.recommendations[0].reason
 
@@ -412,7 +419,7 @@ def test_profile_route_filters_by_category_first(test_db) -> None:
     )
 
     assert response.total_reviews_analyzed == 1
-    assert [recommendation.product for recommendation in response.recommendations] == [
+    assert [recommendation.asin for recommendation in response.recommendations] == [
         "Oil Control Cleanser"
     ]
 
@@ -438,7 +445,7 @@ def test_recommendation_reason_includes_negative_signals_for_fallbacks() -> None
         reviews,
     )
 
-    assert recommendations[1].product == "Dry Rescue Cream"
+    assert recommendations[1].asin == "Dry Rescue Cream"
     assert "product is labeled for dry skin, not oily" in recommendations[1].reason
     assert "Review says: \"Very moisturizing and calming\"" in recommendations[1].reason
 
@@ -540,7 +547,7 @@ def test_submitted_reviews_are_included_in_recommendations(test_db) -> None:
     )
 
     assert response.total_reviews_analyzed == 3
-    assert any(recommendation.product == "user_submitted" for recommendation in response.recommendations)
+    assert any(recommendation.asin == "user_submitted" for recommendation in response.recommendations)
 
 
 def test_profile_route_excludes_high_ad_score_reviews_from_results() -> None:
@@ -565,4 +572,4 @@ def test_profile_route_excludes_high_ad_score_reviews_from_results() -> None:
 
     assert filtered_count == 1
     assert strategy == "exact_match_prioritized"
-    assert [recommendation.product for recommendation in recommendations] == ["Balanced Lotion"]
+    assert [recommendation.asin for recommendation in recommendations] == ["Balanced Lotion"]
