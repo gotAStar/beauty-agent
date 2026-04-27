@@ -1,5 +1,6 @@
 from collections import Counter, defaultdict
 from dataclasses import dataclass
+import re
 from statistics import mean
 
 from app.backend.models.schemas import ProductReview, Recommendation, UserProfileRequest
@@ -57,6 +58,16 @@ class ProductAggregate:
 
 def build_amazon_url(asin: str) -> str:
     return f"https://www.amazon.com/dp/{asin}"
+
+
+def extract_asin(product_name: str) -> str:
+    normalized_product_name = product_name.strip()
+    asin_match = re.search(r"\b([A-Z0-9]{10})\b", normalized_product_name.upper())
+
+    if asin_match:
+        return asin_match.group(1)
+
+    return normalized_product_name
 
 
 def count_concern_keyword_frequency(
@@ -257,7 +268,7 @@ def build_product_aggregate(
     )
 
     return ProductAggregate(
-        asin=representative_review.product,
+        asin=extract_asin(representative_review.product),
         label=generate_product_label(product_reviews, grouped_category),
         category=grouped_category,
         skin_type=selected_skin_type,

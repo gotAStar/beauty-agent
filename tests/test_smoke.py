@@ -18,7 +18,7 @@ from app.backend.models.schemas import (
 )
 from app.backend.services.filtering import calculate_ad_score, filter_reviews
 from app.backend.services.ingestion import load_reviews
-from app.backend.services.ranking import rank_products
+from app.backend.services.ranking import extract_asin, rank_products
 from app.backend.services.review_processing import (
     detect_promotional_content,
     extract_review_keywords,
@@ -48,6 +48,26 @@ def test_load_reviews_reads_seed_dataset(test_db) -> None:
 
     assert len(reviews) == 4
     assert reviews[0].product == "Oil Control Cleanser"
+
+
+def test_product_review_accepts_product_name_field_as_source_asin() -> None:
+    review = ProductReview.model_validate(
+        {
+            "product_name": "B07RBSLNFR",
+            "category": "moisturizer",
+            "skin_type": "dry",
+            "review": "Hydrating and gentle.",
+            "rating": 4.6,
+        }
+    )
+
+    assert review.product == "B07RBSLNFR"
+
+
+def test_extract_asin_pulls_identifier_from_product_name_text() -> None:
+    assert extract_asin("ASIN: B07RBSLNFR") == "B07RBSLNFR"
+    assert extract_asin("b07rbslnfr") == "B07RBSLNFR"
+    assert extract_asin("Hydrating Cream") == "Hydrating Cream"
 
 
 def test_load_reviews_falls_back_to_seed_data_when_database_query_fails(
@@ -239,6 +259,25 @@ def test_rank_products_prioritizes_skin_type_match_then_rating() -> None:
     assert recommendations[2].matched_skin_type is False
     assert recommendations[0].ad_score == 0.0
     assert recommendations[0].score > recommendations[1].score
+
+
+def test_rank_products_builds_amazon_url_from_extracted_asin() -> None:
+    reviews = [
+        ProductReview(
+            product="ASIN: B07RBSLNFR",
+            skin_type="dry",
+            review="Hydrating and calming for dry skin",
+            rating=4.7,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="dry", concerns=["dryness"]),
+        reviews,
+    )
+
+    assert recommendations[0].asin == "B07RBSLNFR"
+    assert recommendations[0].amazon_url == "https://www.amazon.com/dp/B07RBSLNFR"
 
 
 def test_rank_products_boosts_concern_matches_in_review_text() -> None:

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class UserProfileRequest(BaseModel):
@@ -10,7 +10,7 @@ class UserProfileRequest(BaseModel):
 
 
 class ProductReview(BaseModel):
-    product: str
+    product: str = Field(validation_alias=AliasChoices("product_name", "product"))
     category: str = Field(default="skincare")
     skin_type: str
     review: str
