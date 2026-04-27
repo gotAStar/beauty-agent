@@ -70,7 +70,7 @@ def test_load_reviews_prefers_database_reviews_when_available(test_db) -> None:
     assert reviews[0].product == "B07RBSLNFR"
 
 
-def test_load_reviews_does_not_fall_back_to_seed_for_non_sqlite_database(
+def test_load_reviews_falls_back_to_seed_for_non_sqlite_database_when_empty(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost/testdb")
@@ -85,7 +85,8 @@ def test_load_reviews_does_not_fall_back_to_seed_for_non_sqlite_database(
 
     reviews = load_reviews(EmptySession())
 
-    assert reviews == []
+    assert len(reviews) == 4
+    assert reviews[0].product == "Oil Control Cleanser"
 
 
 def test_product_review_accepts_product_name_field_as_source_asin() -> None:
