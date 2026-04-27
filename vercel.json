@@ -4,5 +4,11 @@
   "installCommand": "npm --prefix app/frontend install",
   "buildCommand": "npm --prefix app/frontend run build",
   "outputDirectory": "app/frontend/dist",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://beauty-agent-cufm.onrender.com/api/$1"
+    }
+  ]
 }
