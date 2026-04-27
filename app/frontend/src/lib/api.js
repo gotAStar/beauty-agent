@@ -1,7 +1,9 @@
-const apiBaseUrl = (import.meta.env.API_BASE_URL || import.meta.env.VITE_API_BASE_URL || "").replace(
-  /\/$/,
-  "",
-);
+const defaultApiBaseUrl = "https://beauty-agent-cufm.onrender.com";
+const apiBaseUrl = (
+  import.meta.env.API_BASE_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  defaultApiBaseUrl
+).replace(/\/$/, "");
 
 function getApiUrl(path) {
   return apiBaseUrl ? `${apiBaseUrl}${path}` : path;
