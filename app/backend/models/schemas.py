@@ -33,8 +33,26 @@ class Recommendation(BaseModel):
     reason: str
 
 
+class AgentStep(BaseModel):
+    key: str
+    title: str
+    status: str = Field(default="completed")
+    summary: str
+    details: list[str] = Field(default_factory=list)
+    metrics: dict[str, int | float | str] = Field(default_factory=dict)
+
+
+class FinalDecision(BaseModel):
+    chosen_product: Recommendation | None = None
+    reasoning: str
+    trade_offs: list[str] = Field(default_factory=list)
+    confidence_score: int = Field(default=0, ge=0, le=100)
+
+
 class UserProfileResponse(BaseModel):
     user_profile: UserProfileRequest
+    final_decision: FinalDecision
+    agent_steps: list[AgentStep]
     recommendations: list[Recommendation]
     match_strategy: str
     filtered_reviews_count: int

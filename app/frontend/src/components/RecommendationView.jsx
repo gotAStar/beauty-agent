@@ -1,5 +1,7 @@
 import { CATEGORY_OPTIONS, CONCERN_OPTIONS, SKIN_TYPE_OPTIONS } from "../constants";
 import { formatCategory } from "../utils/recommendations";
+import AgentStepList from "./AgentStepList";
+import DecisionSummaryCard from "./DecisionSummaryCard";
 import RecommendationCard from "./RecommendationCard";
 import SectionHeader from "./SectionHeader";
 import SurfaceCard from "./SurfaceCard";
@@ -35,6 +37,7 @@ export default function RecommendationView({
   selectedThemeLabel,
   status,
   loading,
+  agentSteps,
   recommendationData,
   profileValues,
   onBackHome,
@@ -44,6 +47,8 @@ export default function RecommendationView({
   onConcernToggle,
   onSubmitProfile,
 }) {
+  const alternatives = recommendationData?.recommendations?.slice(1, 3) || [];
+
   return (
     <section className="opacity-100 transition duration-300">
       <div className="rounded-[28px] border border-white/70 bg-white/80 p-7 shadow-shell backdrop-blur-[20px]">
@@ -67,8 +72,8 @@ export default function RecommendationView({
           Find your next skincare match
         </h1>
         <p className="mt-3 text-base leading-7 text-[var(--muted)]">
-          Start with a category, then share your skin profile for a more
-          thoughtful top 3.
+          Start with a category, then let the decision agent weigh review quality,
+          concern fit, and product trust signals.
         </p>
 
         <SurfaceCard
@@ -216,7 +221,7 @@ export default function RecommendationView({
                       "linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%)",
                   }}
                 >
-                  Get Recommendations
+                  Start Agent Review
                 </button>
               </div>
             </form>
@@ -227,10 +232,10 @@ export default function RecommendationView({
           <div className="flex flex-col items-start justify-between gap-[18px] md:flex-row">
             <div>
               <p className="mb-2.5 text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
-                Top 3 Picks
+                Decision Output
               </p>
               <h2 className="font-display text-[2rem] leading-[0.95] tracking-[-0.02em] text-[var(--text)] md:text-[2.55rem]">
-                Your recommendations
+                Your agent decision
               </h2>
             </div>
 
@@ -246,21 +251,40 @@ export default function RecommendationView({
           {loading ? (
             <div className="mt-[18px] inline-flex items-center gap-3 rounded-full border border-[var(--border)] bg-white/90 px-4 py-3 text-[var(--muted)]">
               <span className="h-[18px] w-[18px] animate-spin-soft rounded-full border-2 border-black/10 border-t-[var(--accent-strong)]" />
-              <span>Matching your concerns with trusted review signals...</span>
+              <span>Analyzing your profile and moving through the decision steps...</span>
             </div>
           ) : null}
 
+          <AgentStepList steps={agentSteps} />
+
           {recommendationData ? (
-            <div className="mt-[18px] grid gap-4">
-              {recommendationData.recommendations.slice(0, 3).map((recommendation, index) => (
-                <RecommendationCard
-                  key={`${recommendation.asin}-${index}`}
-                  recommendation={recommendation}
-                  index={index}
-                  trustScore={recommendationData.trust_score}
-                />
-              ))}
-            </div>
+            <DecisionSummaryCard
+              finalDecision={recommendationData.final_decision}
+              trustScore={recommendationData.trust_score}
+            />
+          ) : null}
+
+          {alternatives.length ? (
+            <section className="mt-6">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
+                Alternatives
+              </p>
+              <h3 className="mt-1 font-display text-[1.8rem] leading-[0.95] tracking-[-0.02em] text-[var(--text)]">
+                Other products the agent considered
+              </h3>
+
+              <div className="mt-4 grid gap-4">
+                {alternatives.map((recommendation, index) => (
+                  <RecommendationCard
+                    key={`${recommendation.asin}-${index}`}
+                    recommendation={recommendation}
+                    index={index}
+                    trustScore={recommendationData.trust_score}
+                    eyebrowLabel={`Alternative ${index + 1}`}
+                  />
+                ))}
+              </div>
+            </section>
           ) : null}
         </section>
       </div>

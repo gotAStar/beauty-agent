@@ -26,15 +26,21 @@ function extractReviewQuote(text, fallbackReview) {
   return sourceText.replace(/\s+/g, " ").trim();
 }
 
+export function extractRecommendationInsights(recommendation) {
+  return {
+    positive: extractSection(recommendation.reason, "Positive signals"),
+    negative: extractSection(recommendation.reason, "Negative signals"),
+    reviewQuote: extractReviewQuote(recommendation.reason, recommendation.review),
+  };
+}
+
 export function buildSignalItems(recommendation) {
-  const positive = extractSection(recommendation.reason, "Positive signals");
-  const negative = extractSection(recommendation.reason, "Negative signals");
-  const reviewQuote = extractReviewQuote(recommendation.reason, recommendation.review);
+  const { positive, negative, reviewQuote } = extractRecommendationInsights(recommendation);
   const signals = [];
 
   if (positive) {
     signals.push({
-      icon: "✔",
+      icon: "\u2714",
       tone: "positive",
       text: positive,
     });
@@ -42,7 +48,7 @@ export function buildSignalItems(recommendation) {
 
   if (reviewQuote) {
     signals.push({
-      icon: "⭐",
+      icon: "\u2b50",
       tone: "neutral",
       text: `Review highlight: "${reviewQuote}"`,
     });
@@ -50,7 +56,7 @@ export function buildSignalItems(recommendation) {
 
   if (negative) {
     signals.push({
-      icon: "❌",
+      icon: "\u274c",
       tone: "negative",
       text: negative,
     });
@@ -58,7 +64,7 @@ export function buildSignalItems(recommendation) {
 
   if (signals.length < 3) {
     signals.push({
-      icon: "⭐",
+      icon: "\u2b50",
       tone: "neutral",
       text: `Rated ${recommendation.rating.toFixed(1)}/5 across ${recommendation.review_count} review(s) with a recommendation score of ${recommendation.score.toFixed(1)}.`,
     });
@@ -66,7 +72,7 @@ export function buildSignalItems(recommendation) {
 
   if (signals.length < 3) {
     signals.push({
-      icon: recommendation.matched_skin_type ? "✔" : "❌",
+      icon: recommendation.matched_skin_type ? "\u2714" : "\u274c",
       tone: recommendation.matched_skin_type ? "positive" : "negative",
       text: recommendation.matched_skin_type
         ? `Labeled for ${recommendation.skin_type} skin, which matches your profile.`

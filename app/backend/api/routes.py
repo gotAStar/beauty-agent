@@ -11,11 +11,8 @@ from app.backend.models.schemas import (
     UserProfileRequest,
     UserProfileResponse,
 )
-from app.backend.services.filtering import filter_reviews
-from app.backend.services.ingestion import load_reviews
-from app.backend.services.ranking import rank_products
+from app.backend.services.decision_agent import decision_agent
 from app.backend.services.review_processing import process_review_submission
-from app.backend.services.trust import calculate_trust_score
 
 
 router = APIRouter()
@@ -33,43 +30,22 @@ async def create_user_profile(
     db: Session = Depends(get_session),
 ) -> UserProfileResponse:
     logger.info("Incoming user profile: %s", payload.model_dump())
+    response = decision_agent(payload, db)
 
-    reviews = load_reviews(db)
-    category_reviews = reviews
-    if payload.category != "all":
-        matching_category_reviews = [
-            review for review in reviews if review.category.strip().lower() == payload.category.strip().lower()
-        ]
-        if matching_category_reviews:
-            category_reviews = matching_category_reviews
-
-    filtered_reviews, filtered_reviews_count = filter_reviews(category_reviews)
-    recommendations, strategy = rank_products(payload, filtered_reviews)
-    trust_score = calculate_trust_score(
-        filtered_reviews,
-        filtered_reviews_count,
-        len(category_reviews),
-    )
     logger.info(
-        "Review filtering summary: category=%s total=%s filtered=%s trust_score=%s",
+        "Decision agent summary: category=%s total=%s filtered=%s trust_score=%s confidence=%s",
         payload.category,
-        len(category_reviews),
-        filtered_reviews_count,
-        trust_score,
+        response.total_reviews_analyzed,
+        response.filtered_reviews_count,
+        response.trust_score,
+        response.final_decision.confidence_score,
     )
     logger.info(
         "Selected recommendations: %s",
-        [recommendation.model_dump() for recommendation in recommendations],
+        [recommendation.model_dump() for recommendation in response.recommendations],
     )
 
-    return UserProfileResponse(
-        user_profile=payload,
-        recommendations=recommendations,
-        match_strategy=strategy,
-        filtered_reviews_count=filtered_reviews_count,
-        total_reviews_analyzed=len(category_reviews),
-        trust_score=trust_score,
-    )
+    return response
 
 
 @router.post("/review", response_model=ReviewSubmissionResponse)

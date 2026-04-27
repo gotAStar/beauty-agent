@@ -10,6 +10,7 @@ export default function RecommendationCard({
   recommendation,
   index,
   trustScore,
+  eyebrowLabel,
 }) {
   const signals = buildSignalItems(recommendation);
 
@@ -21,7 +22,7 @@ export default function RecommendationCard({
       <div className="mb-4 flex flex-col items-start justify-between gap-[18px] md:flex-row">
         <div>
           <span className="mb-2 inline-block text-[0.82rem] font-extrabold uppercase tracking-[0.16em] text-[var(--accent-strong)]">
-            {`Top ${index + 1}`}
+            {eyebrowLabel || `Top ${index + 1}`}
           </span>
           <h3 className="font-display text-[1.95rem] leading-[0.95] tracking-[-0.02em] text-[var(--text)]">
             {recommendation.label}
@@ -56,9 +57,9 @@ export default function RecommendationCard({
         </div>
       </div>
 
-      <ul className="mt-[18px] grid gap-3">
+      <div className="mt-[18px] grid gap-3">
         {signals.map((signal) => (
-          <li
+          <div
             key={`${recommendation.asin}-${signal.icon}-${signal.text}`}
             className="grid grid-cols-[24px_1fr] items-start gap-3 rounded-2xl bg-[#fcfafb] px-[14px] py-3"
           >
@@ -68,13 +69,13 @@ export default function RecommendationCard({
             <span className="text-[15px] leading-7 text-[var(--text)]">
               {signal.text}
             </span>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
 
       <div className="mt-[18px] flex flex-col items-start justify-between gap-[18px] md:flex-row">
         <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--text)]">
-          {`⭐ Score ${recommendation.score.toFixed(1)}`}
+          {`Score ${recommendation.score.toFixed(1)}`}
         </span>
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--muted)]">

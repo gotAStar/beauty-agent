@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import HomeView from "./components/HomeView";
 import RecommendationView from "./components/RecommendationView";
@@ -20,6 +20,43 @@ const defaultReviewValues = {
   review_rating: "4.0",
 };
 
+const agentStepTemplates = [
+  {
+    key: "goal_understanding",
+    title: "Goal Understanding",
+    summary: "Analyzing your skin profile, category, and preferences...",
+  },
+  {
+    key: "data_retrieval",
+    title: "Data Retrieval",
+    summary: "Collecting review evidence for the selected category...",
+  },
+  {
+    key: "filtering",
+    title: "Filtering",
+    summary: "Removing suspicious or promotional reviews...",
+  },
+  {
+    key: "ranking",
+    title: "Ranking",
+    summary: "Scoring products with concern, rating, and trust signals...",
+  },
+  {
+    key: "decision",
+    title: "Decision",
+    summary: "Choosing the strongest product and weighing trade-offs...",
+  },
+];
+
+function buildLoadingSteps(activeIndex = 0) {
+  return agentStepTemplates.map((step, index) => ({
+    ...step,
+    status: index < activeIndex ? "completed" : index === activeIndex ? "active" : "pending",
+    details: [],
+    metrics: {},
+  }));
+}
+
 function getThemeKey(category, fallback = "default") {
   return THEME_CONFIG[category] ? category : fallback;
 }
@@ -34,7 +71,15 @@ export default function App() {
   );
   const [reviewStatus, setReviewStatus] = useState("Your review helps others.");
   const [loading, setLoading] = useState(false);
+  const [agentSteps, setAgentSteps] = useState([]);
   const [recommendationData, setRecommendationData] = useState(null);
+  const progressIntervalRef = useRef(null);
+
+  useEffect(() => () => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+    }
+  }, []);
 
   const themeKey =
     activeView === "recommend"
@@ -55,6 +100,13 @@ export default function App() {
     background: `radial-gradient(circle at top left, ${theme.glow}, transparent 34%), radial-gradient(circle at 85% 20%, rgba(255, 255, 255, 0.9), transparent 28%), linear-gradient(180deg, ${theme.bgTop} 0%, ${theme.bgBottom} 100%)`,
   };
 
+  function clearAgentProgress() {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  }
+
   function handleOpenRecommendations() {
     setActiveView("recommend");
   }
@@ -69,9 +121,11 @@ export default function App() {
 
   function handleSelectCategory(category) {
     setSelectedCategory(category);
-    setStatus(`Selected ${category.charAt(0).toUpperCase() + category.slice(1)}. Complete your profile to see the best matches.`);
+    setStatus(`Selected ${category.charAt(0).toUpperCase() + category.slice(1)}. Complete your profile to see the best match.`);
     setLoading(false);
+    setAgentSteps([]);
     setRecommendationData(null);
+    clearAgentProgress();
   }
 
   function handleBackToCategory() {
@@ -79,7 +133,9 @@ export default function App() {
     setProfileValues(defaultProfileValues);
     setStatus("Choose a category and submit your profile to see recommendations.");
     setLoading(false);
+    setAgentSteps([]);
     setRecommendationData(null);
+    clearAgentProgress();
   }
 
   function handleProfileChange(event) {
@@ -114,26 +170,45 @@ export default function App() {
       preferences: profileValues.preferences.trim() || null,
     };
 
-    setStatus("Looking through trusted reviews for your best matches...");
+    clearAgentProgress();
+    setStatus("The agent is reviewing your profile and building a decision...");
     setLoading(true);
+    setAgentSteps(buildLoadingSteps(0));
     setRecommendationData(null);
+
+    progressIntervalRef.current = setInterval(() => {
+      setAgentSteps((current) => {
+        if (!current.length) {
+          return buildLoadingSteps(0);
+        }
+
+        const activeIndex = current.findIndex((step) => step.status === "active");
+
+        if (activeIndex === -1 || activeIndex >= agentStepTemplates.length - 1) {
+          return current.map((step, index) => ({
+            ...step,
+            status: index === agentStepTemplates.length - 1 ? "active" : "completed",
+          }));
+        }
+
+        return buildLoadingSteps(activeIndex + 1);
+      });
+    }, 900);
 
     try {
       const data = await fetchRecommendations(payload);
-
-      if (!Array.isArray(data.recommendations) || data.recommendations.length === 0) {
-        setStatus("No recommendations were found for that profile yet.");
-        return;
-      }
-
+      clearAgentProgress();
+      setAgentSteps(data.agent_steps || []);
       setStatus(
-        data.match_strategy === "highest_rated_fallback"
-          ? "No exact skin-type match was available, so these are the strongest high-rated fallbacks."
-          : "Here are your top 3 personalized recommendations.",
+        data.final_decision?.chosen_product
+          ? `Decision complete. ${data.final_decision.chosen_product.label} is the agent's recommended product.`
+          : data.final_decision?.reasoning || "No recommendations were found for that profile yet.",
       );
       setRecommendationData(data);
     } catch (error) {
+      clearAgentProgress();
       setStatus(`Request failed: ${error.message}`);
+      setAgentSteps([]);
       setRecommendationData(null);
     } finally {
       setLoading(false);
@@ -201,6 +276,7 @@ export default function App() {
               selectedThemeLabel={theme.label}
               status={status}
               loading={loading}
+              agentSteps={agentSteps}
               recommendationData={recommendationData}
               profileValues={profileValues}
               onBackHome={handleBackHome}

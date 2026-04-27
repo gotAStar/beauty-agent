@@ -479,10 +479,17 @@ def test_profile_route_returns_top_three_recommendations(test_db) -> None:
     assert response.filtered_reviews_count == 0
     assert response.total_reviews_analyzed == 4
     assert 0 <= response.trust_score <= 100
+    assert len(response.agent_steps) == 5
+    assert response.agent_steps[0].key == "goal_understanding"
+    assert response.agent_steps[-1].key == "decision"
     assert len(response.recommendations) == 3
+    assert response.final_decision.chosen_product is not None
+    assert response.final_decision.chosen_product.asin == "Lightweight Moisturizer"
+    assert 0 <= response.final_decision.confidence_score <= 100
     assert response.recommendations[0].asin == "Lightweight Moisturizer"
     assert response.recommendations[0].label == "Oil Control Moisturizer"
     assert response.recommendations[0].score >= response.recommendations[1].score
+    assert "top choice" in response.final_decision.reasoning
 
 
 def test_profile_route_uses_concern_keywords_for_dataset(test_db) -> None:
@@ -501,6 +508,8 @@ def test_profile_route_uses_concern_keywords_for_dataset(test_db) -> None:
     assert response.recommendations[0].label == "Hydrating Moisturizer"
     assert "Very moisturizing and gentle" in response.recommendations[0].reason
     assert "dryness support" in response.recommendations[0].reason
+    assert response.final_decision.chosen_product is not None
+    assert response.final_decision.chosen_product.asin == "Hydrating Cream"
 
 
 def test_profile_route_filters_by_category_first(test_db) -> None:
@@ -645,6 +654,8 @@ def test_submitted_reviews_are_included_in_recommendations(test_db) -> None:
 
     assert response.total_reviews_analyzed == 1
     assert any(recommendation.asin == "user_submitted" for recommendation in response.recommendations)
+    assert response.final_decision.chosen_product is not None
+    assert response.final_decision.chosen_product.asin == "user_submitted"
 
 
 def test_profile_route_excludes_high_ad_score_reviews_from_results() -> None:
