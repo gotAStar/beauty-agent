@@ -41,4 +41,12 @@ def load_database_reviews(db: Session) -> list[ProductReview]:
 
 
 def load_reviews(db: Session) -> list[ProductReview]:
-    return load_seed_reviews() + load_database_reviews(db)
+    database_reviews = load_database_reviews(db)
+
+    if database_reviews:
+        logger.info("Loaded %s reviews from database; skipping seed fallback data.", len(database_reviews))
+        return database_reviews
+
+    seed_reviews = load_seed_reviews()
+    logger.info("No database reviews found; using %s seed reviews.", len(seed_reviews))
+    return seed_reviews

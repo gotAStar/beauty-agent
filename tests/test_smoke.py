@@ -50,6 +50,26 @@ def test_load_reviews_reads_seed_dataset(test_db) -> None:
     assert reviews[0].product == "Oil Control Cleanser"
 
 
+def test_load_reviews_prefers_database_reviews_when_available(test_db) -> None:
+    test_db.add(
+        ReviewRecord(
+            product_name="B07RBSLNFR",
+            category="moisturizer",
+            review_text="Hydrating and gentle for dry skin.",
+            skin_type="dry",
+            rating=4.7,
+            keywords=["hydration"],
+            is_ad=False,
+        )
+    )
+    test_db.commit()
+
+    reviews = load_reviews(test_db)
+
+    assert len(reviews) == 1
+    assert reviews[0].product == "B07RBSLNFR"
+
+
 def test_product_review_accepts_product_name_field_as_source_asin() -> None:
     review = ProductReview.model_validate(
         {
@@ -585,7 +605,7 @@ def test_submitted_reviews_are_included_in_recommendations(test_db) -> None:
         )
     )
 
-    assert response.total_reviews_analyzed == 3
+    assert response.total_reviews_analyzed == 1
     assert any(recommendation.asin == "user_submitted" for recommendation in response.recommendations)
 
 
