@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from app.backend.api.routes import router as api_router
+from app.backend.database import init_database
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_event_handler("startup", init_database)
 app.include_router(api_router, prefix="/api")
 app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 

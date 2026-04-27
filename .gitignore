@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+
+# pytest
+.pytest_cache/
+
+# data
+data/*.json
+
+# docs
+*.docx
+~$*.docx

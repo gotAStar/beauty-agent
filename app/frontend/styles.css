@@ -60,6 +60,32 @@ h2 {
   margin-top: 24px;
 }
 
+.step-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.step-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.secondary-button {
+  background: transparent;
+  color: var(--accent-dark);
+  border: 1px solid var(--border);
+}
+
+.secondary-button:hover {
+  background: #f5e6d8;
+}
+
+.hidden {
+  display: none;
+}
+
 label {
   display: grid;
   gap: 8px;

@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class UserProfileRequest(BaseModel):
+    category: str = Field(default="all")
     skin_type: str = Field(default="combination")
     concerns: list[str] = Field(default_factory=list)
     budget: float = Field(default=50)
@@ -10,6 +11,7 @@ class UserProfileRequest(BaseModel):
 
 class ProductReview(BaseModel):
     product: str
+    category: str = Field(default="skincare")
     skin_type: str
     review: str
     rating: float
@@ -17,8 +19,10 @@ class ProductReview(BaseModel):
 
 class Recommendation(BaseModel):
     product: str
+    category: str
     skin_type: str
     rating: float
+    score: float
     review: str
     ad_score: float
     matched_skin_type: bool
@@ -32,3 +36,17 @@ class UserProfileResponse(BaseModel):
     filtered_reviews_count: int
     total_reviews_analyzed: int
     trust_score: int
+
+
+class ReviewSubmissionRequest(BaseModel):
+    category: str = Field(default="skincare", min_length=1)
+    review_text: str = Field(min_length=1)
+    skin_type: str = Field(min_length=1)
+    rating: float = Field(ge=0, le=5)
+
+
+class ReviewSubmissionResponse(BaseModel):
+    success: bool
+    message: str
+    keywords: list[str]
+    is_ad: bool

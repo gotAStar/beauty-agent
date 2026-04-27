@@ -1,7 +1,9 @@
-from functools import lru_cache
 import json
 from pathlib import Path
 
+from sqlalchemy.orm import Session
+
+from app.backend.db_models import ReviewRecord
 from app.backend.models.schemas import ProductReview
 
 
@@ -9,9 +11,27 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 REVIEWS_PATH = BASE_DIR / "data" / "reviews.json"
 
 
-@lru_cache(maxsize=1)
-def load_reviews() -> list[ProductReview]:
+def load_seed_reviews() -> list[ProductReview]:
     with REVIEWS_PATH.open(encoding="utf-8") as reviews_file:
         raw_reviews = json.load(reviews_file)
 
     return [ProductReview.model_validate(review) for review in raw_reviews]
+
+
+def load_database_reviews(db: Session) -> list[ProductReview]:
+    saved_reviews = db.query(ReviewRecord).all()
+
+    return [
+        ProductReview(
+            product=review.product_name,
+            category=review.category or "skincare",
+            skin_type=review.skin_type,
+            review=review.review_text,
+            rating=review.rating,
+        )
+        for review in saved_reviews
+    ]
+
+
+def load_reviews(db: Session) -> list[ProductReview]:
+    return load_seed_reviews() + load_database_reviews(db)

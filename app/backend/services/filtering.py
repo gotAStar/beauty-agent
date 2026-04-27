@@ -14,7 +14,7 @@ def calculate_ad_score(review: ProductReview) -> float:
     normalized_review = review.review.strip().lower()
     matches = sum(1 for phrase in PROMOTIONAL_PHRASES if phrase in normalized_review)
 
-    return min(1.0, matches / 2)
+    return min(1.0, matches / len(PROMOTIONAL_PHRASES))
 
 
 def filter_reviews(
