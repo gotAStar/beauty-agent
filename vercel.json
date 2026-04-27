@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "node scripts/build_frontend.mjs",
-  "outputDirectory": "dist/frontend",
+  "buildCommand": "npm --prefix app/frontend run build",
+  "outputDirectory": "app/frontend/dist",
   "cleanUrls": true
 }

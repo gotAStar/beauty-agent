@@ -1,22 +1,65 @@
 import asyncio
 from pathlib import Path
 import sys
+import uuid
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.backend.api.routes import create_user_profile
-from app.backend.models.schemas import ProductReview, UserProfileRequest
+from app.backend.api.routes import create_review, create_user_profile
+from app.backend.database import get_session_factory, init_database, reset_database_state
+from app.backend.db_models import ReviewRecord
+from app.backend.models.schemas import (
+    ProductReview,
+    ReviewSubmissionRequest,
+    UserProfileRequest,
+)
 from app.backend.services.filtering import calculate_ad_score, filter_reviews
 from app.backend.services.ingestion import load_reviews
 from app.backend.services.ranking import rank_products
+from app.backend.services.review_processing import (
+    detect_promotional_content,
+    extract_review_keywords,
+)
 from app.backend.services.trust import calculate_trust_score
 
 
-def test_load_reviews_reads_json_dataset() -> None:
-    reviews = load_reviews()
+@pytest.fixture
+def test_db(monkeypatch: pytest.MonkeyPatch):
+    database_path = Path(__file__).resolve().parents[1] / f"test_reviews_{uuid.uuid4().hex}.db"
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{database_path}")
+    reset_database_state()
+    init_database()
+    session = get_session_factory()()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        reset_database_state()
+        if database_path.exists():
+            database_path.unlink()
+
+
+def test_load_reviews_reads_seed_dataset(test_db) -> None:
+    reviews = load_reviews(test_db)
 
     assert len(reviews) == 4
     assert reviews[0].product == "Oil Control Cleanser"
+
+
+def test_extract_review_keywords_detects_supported_categories() -> None:
+    keywords = extract_review_keywords(
+        "Hydrating formula helped my acne and reduced oily shine.",
+    )
+
+    assert keywords == ["acne", "oily", "hydration"]
+
+
+def test_detect_promotional_content_flags_promotions() -> None:
+    assert detect_promotional_content("Buy now for the best ever glow with discount code") is True
+    assert detect_promotional_content("Gentle cleanser for daily use") is False
 
 
 def test_filter_reviews_removes_promotional_reviews() -> None:
@@ -57,7 +100,7 @@ def test_calculate_ad_score_scales_with_promotional_language() -> None:
     high_signal_review = ProductReview(
         product="Promo Wash",
         skin_type="sensitive",
-        review="Amazing must buy cleanser, best ever",
+        review="Amazing must buy cleanser, link in bio, best ever",
         rating=4.9,
     )
 
@@ -169,6 +212,7 @@ def test_rank_products_prioritizes_skin_type_match_then_rating() -> None:
     assert recommendations[0].matched_skin_type is True
     assert recommendations[2].matched_skin_type is False
     assert recommendations[0].ad_score == 0.0
+    assert recommendations[0].score > recommendations[1].score
 
 
 def test_rank_products_boosts_concern_matches_in_review_text() -> None:
@@ -204,6 +248,39 @@ def test_rank_products_boosts_concern_matches_in_review_text() -> None:
     assert "Positive signals:" in recommendations[0].reason
     assert "Negative signals:" in recommendations[0].reason
     assert "acne support" in recommendations[0].reason
+    assert recommendations[0].score > recommendations[1].score
+
+
+def test_rank_products_boosts_products_with_more_supporting_reviews() -> None:
+    reviews = [
+        ProductReview(
+            product="Acne Rescue",
+            skin_type="oily",
+            review="Helps reduce acne and breakouts",
+            rating=4.4,
+        ),
+        ProductReview(
+            product="Acne Rescue",
+            skin_type="oily",
+            review="Good for acne prone oily skin",
+            rating=4.3,
+        ),
+        ProductReview(
+            product="Single Review Gel",
+            skin_type="oily",
+            review="Helps reduce acne",
+            rating=4.6,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="oily", concerns=["acne"]),
+        reviews,
+    )
+
+    assert recommendations[0].product == "Acne Rescue"
+    assert recommendations[0].score > recommendations[1].score
+    assert "supported by 2 valid reviews" in recommendations[0].reason
 
 
 def test_rank_products_falls_back_to_highest_rated_when_no_match() -> None:
@@ -241,8 +318,36 @@ def test_rank_products_falls_back_to_highest_rated_when_no_match() -> None:
     ]
 
 
-def test_profile_route_returns_top_three_recommendations() -> None:
-    response = asyncio.run(create_user_profile(UserProfileRequest(skin_type="combination")))
+def test_rank_products_penalizes_mild_promotional_language() -> None:
+    reviews = [
+        ProductReview(
+            product="Balanced Gel",
+            skin_type="combination",
+            review="Good balance and lightweight feel",
+            rating=4.5,
+        ),
+        ProductReview(
+            product="Promo Balance Gel",
+            skin_type="combination",
+            review="Amazing balance and lightweight feel",
+            rating=4.5,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="combination"),
+        reviews,
+    )
+
+    assert recommendations[0].product == "Balanced Gel"
+    assert recommendations[1].ad_score > recommendations[0].ad_score
+    assert "ad penalty" in recommendations[1].reason
+
+
+def test_profile_route_returns_top_three_recommendations(test_db) -> None:
+    response = asyncio.run(
+        create_user_profile(UserProfileRequest(skin_type="combination"), db=test_db),
+    )
 
     assert response.user_profile.skin_type == "combination"
     assert response.match_strategy == "exact_match_prioritized"
@@ -251,21 +356,42 @@ def test_profile_route_returns_top_three_recommendations() -> None:
     assert 0 <= response.trust_score <= 100
     assert len(response.recommendations) == 3
     assert response.recommendations[0].product == "Lightweight Moisturizer"
+    assert response.recommendations[0].score >= response.recommendations[1].score
 
 
-def test_profile_route_uses_concern_keywords_for_dataset() -> None:
+def test_profile_route_uses_concern_keywords_for_dataset(test_db) -> None:
     response = asyncio.run(
         create_user_profile(
             UserProfileRequest(
+                category="moisturizer",
                 skin_type="dry",
                 concerns=["dryness"],
-            )
+            ),
+            db=test_db,
         )
     )
 
     assert response.recommendations[0].product == "Hydrating Cream"
     assert "Very moisturizing and gentle" in response.recommendations[0].reason
     assert "dryness support" in response.recommendations[0].reason
+
+
+def test_profile_route_filters_by_category_first(test_db) -> None:
+    response = asyncio.run(
+        create_user_profile(
+            UserProfileRequest(
+                category="cleanser",
+                skin_type="oily",
+                concerns=["oily"],
+            ),
+            db=test_db,
+        )
+    )
+
+    assert response.total_reviews_analyzed == 1
+    assert [recommendation.product for recommendation in response.recommendations] == [
+        "Oil Control Cleanser"
+    ]
 
 
 def test_recommendation_reason_includes_negative_signals_for_fallbacks() -> None:
@@ -310,7 +436,88 @@ def test_recommendation_reason_avoids_empty_positive_signals_for_weak_matches() 
     )
 
     assert "Positive signals: ." not in recommendations[0].reason
-    assert "limited direct evidence beyond passing the review quality filter" in recommendations[0].reason
+    assert "review does not clearly mention your selected concerns" in recommendations[0].reason
+    assert "Score breakdown:" in recommendations[0].reason
+
+
+def test_review_submission_saves_to_database(test_db) -> None:
+    response = asyncio.run(
+        create_review(
+            ReviewSubmissionRequest(
+                category="treatment",
+                review_text="Hydrating formula that helped my acne and oily skin.",
+                skin_type="oily",
+                rating=4.8,
+            ),
+            db=test_db,
+        )
+    )
+
+    saved_reviews = test_db.query(ReviewRecord).all()
+
+    assert response.success is True
+    assert response.keywords == ["acne", "oily", "hydration"]
+    assert response.is_ad is False
+    assert len(saved_reviews) == 1
+    assert saved_reviews[0].product_name == "user_submitted"
+    assert saved_reviews[0].category == "treatment"
+    assert saved_reviews[0].keywords == ["acne", "oily", "hydration"]
+
+
+def test_review_submission_allows_duplicate_review_text(test_db) -> None:
+    payload = ReviewSubmissionRequest(
+        category="moisturizer",
+        review_text="Same text review",
+        skin_type="dry",
+        rating=4.1,
+    )
+
+    asyncio.run(create_review(payload, db=test_db))
+    asyncio.run(create_review(payload, db=test_db))
+
+    saved_count = test_db.query(ReviewRecord).filter_by(review_text="Same text review").count()
+
+    assert saved_count == 2
+
+
+def test_review_submission_flags_promotional_content(test_db) -> None:
+    response = asyncio.run(
+        create_review(
+            ReviewSubmissionRequest(
+                category="cleanser",
+                review_text="Buy now, best ever cleanser with discount today",
+                skin_type="combination",
+                rating=4.7,
+            ),
+            db=test_db,
+        )
+    )
+
+    assert response.is_ad is True
+
+
+def test_submitted_reviews_are_included_in_recommendations(test_db) -> None:
+    asyncio.run(
+        create_review(
+            ReviewSubmissionRequest(
+                category="moisturizer",
+                review_text="Hydrating support for dry skin with great moisture",
+                skin_type="dry",
+                rating=5.0,
+            ),
+            db=test_db,
+        )
+    )
+
+    response = asyncio.run(
+        create_user_profile(
+            UserProfileRequest(category="moisturizer", skin_type="dry", concerns=["dryness"]),
+            db=test_db,
+        )
+    )
+
+    assert response.total_reviews_analyzed == 3
+    assert any(recommendation.product == "user_submitted" for recommendation in response.recommendations)
 
 
 def test_profile_route_excludes_high_ad_score_reviews_from_results() -> None:

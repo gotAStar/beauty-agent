@@ -5,6 +5,9 @@ __pycache__/
 # pytest
 .pytest_cache/
 
+# frontend
+app/frontend/node_modules/
+
 # data
 data/*.json
 

@@ -1,24 +1,28 @@
 [
   {
     "product": "Oil Control Cleanser",
+    "category": "cleanser",
     "skin_type": "oily",
     "review": "Helps reduce oil and acne",
     "rating": 4.5
   },
   {
     "product": "Acne Treatment Gel",
+    "category": "treatment",
     "skin_type": "oily",
     "review": "Reduced my breakouts significantly",
     "rating": 4.7
   },
   {
     "product": "Hydrating Cream",
+    "category": "moisturizer",
     "skin_type": "dry",
     "review": "Very moisturizing and gentle",
     "rating": 4.2
   },
   {
     "product": "Lightweight Moisturizer",
+    "category": "moisturizer",
     "skin_type": "combination",
     "review": "Doesn't feel greasy, good balance",
     "rating": 4.3

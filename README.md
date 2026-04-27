@@ -11,22 +11,42 @@ Minimal scaffold for a personalized beauty decision assistant web app.
 pip install -r requirements.txt
 ```
 
-3. Start the app:
+3. Build the React frontend:
+
+```bash
+cd app/frontend
+npm install
+npm run build
+```
+
+4. Start the app:
 
 ```bash
 python -m app.backend.main
 ```
 
-4. Open:
+5. Open:
 
 ```text
 http://127.0.0.1:8000
 ```
 
+## Frontend development
+
+Run the React frontend locally with Vite:
+
+```bash
+cd app/frontend
+npm install
+npm run dev
+```
+
+Set `API_BASE_URL=http://127.0.0.1:8000` if you want the Vite dev server to call the local FastAPI backend.
+
 ## Production notes
 
 - The server binds to `0.0.0.0` and reads the port from the `PORT` environment variable.
-- Static assets are served from `app/frontend` at `/static`.
+- Static assets are served from `app/frontend/dist/static` at `/static`.
 - The landing page is served from `/`.
 - Health check: `GET /api/health`
 
@@ -44,11 +64,11 @@ http://127.0.0.1:8000
 1. Import this repository into Vercel.
 2. Set the Root Directory to `app/frontend`.
 3. Set the production environment variable `API_BASE_URL` to your Render backend URL, such as `https://your-api.onrender.com`.
-4. Deploy. Vercel will use `app/frontend/vercel.json` and build the static frontend into `app/frontend/dist`.
+4. Deploy. Vercel will use `app/frontend/vercel.json` and build the React app into `app/frontend/dist`.
 
 ## Current scope
 
-- one-page frontend
+- React + Tailwind frontend
 - FastAPI backend
 - review ingestion from `data/reviews.json`
 - ad filtering, ranking, explanations, and trust scoring
