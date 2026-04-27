@@ -36,6 +36,7 @@ CATEGORY_LABELS = {
     "sunscreen": "Sunscreen",
     "skincare": "Product",
 }
+ASIN_PATTERN = re.compile(r"^[A-Z0-9]{10}$")
 
 
 @dataclass
@@ -57,6 +58,9 @@ class ProductAggregate:
 
 
 def build_amazon_url(asin: str) -> str:
+    if not ASIN_PATTERN.fullmatch(asin.strip().upper()):
+        return ""
+
     return f"https://www.amazon.com/dp/{asin}"
 
 

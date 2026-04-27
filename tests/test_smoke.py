@@ -70,6 +70,24 @@ def test_load_reviews_prefers_database_reviews_when_available(test_db) -> None:
     assert reviews[0].product == "B07RBSLNFR"
 
 
+def test_load_reviews_does_not_fall_back_to_seed_for_non_sqlite_database(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://user:pass@localhost/testdb")
+
+    class EmptySession:
+        def query(self, _model):
+            class EmptyQuery:
+                def all(self):
+                    return []
+
+            return EmptyQuery()
+
+    reviews = load_reviews(EmptySession())
+
+    assert reviews == []
+
+
 def test_product_review_accepts_product_name_field_as_source_asin() -> None:
     review = ProductReview.model_validate(
         {
@@ -236,25 +254,25 @@ def test_calculate_trust_score_returns_zero_without_reviews() -> None:
 def test_rank_products_prioritizes_skin_type_match_then_rating() -> None:
     reviews = [
         ProductReview(
-            product="Match High",
+            product="B07RBSLNFR",
             skin_type="oily",
             review="Best oily option",
             rating=4.8,
         ),
         ProductReview(
-            product="Match Mid",
+            product="B07W397QG4",
             skin_type="oily",
             review="Solid oily option",
             rating=4.3,
         ),
         ProductReview(
-            product="Fallback Top",
+            product="B00R8DXL44",
             skin_type="dry",
             review="Best fallback",
             rating=5.0,
         ),
         ProductReview(
-            product="Fallback Next",
+            product="B07NSR3CKR",
             skin_type="combination",
             review="Next fallback",
             rating=4.7,
@@ -268,17 +286,36 @@ def test_rank_products_prioritizes_skin_type_match_then_rating() -> None:
 
     assert strategy == "exact_match_prioritized"
     assert [recommendation.asin for recommendation in recommendations] == [
-        "Match High",
-        "Match Mid",
-        "Fallback Top",
+        "B07RBSLNFR",
+        "B07W397QG4",
+        "B00R8DXL44",
     ]
     assert recommendations[0].label == "Oil Control Product"
     assert recommendations[0].review_count == 1
-    assert recommendations[0].amazon_url == "https://www.amazon.com/dp/Match High"
+    assert recommendations[0].amazon_url == "https://www.amazon.com/dp/B07RBSLNFR"
     assert recommendations[0].matched_skin_type is True
     assert recommendations[2].matched_skin_type is False
     assert recommendations[0].ad_score == 0.0
     assert recommendations[0].score > recommendations[1].score
+
+
+def test_rank_products_does_not_build_amazon_url_for_non_asin_product_name() -> None:
+    reviews = [
+        ProductReview(
+            product="Oil Control Cleanser",
+            skin_type="oily",
+            review="Best oily option",
+            rating=4.8,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="oily"),
+        reviews,
+    )
+
+    assert recommendations[0].asin == "Oil Control Cleanser"
+    assert recommendations[0].amazon_url == ""
 
 
 def test_rank_products_builds_amazon_url_from_extracted_asin() -> None:

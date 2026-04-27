@@ -1,5 +1,6 @@
 import logging
 import json
+from app.backend.database import get_database_url
 from pathlib import Path
 
 from sqlalchemy.orm import Session
@@ -46,6 +47,14 @@ def load_reviews(db: Session) -> list[ProductReview]:
     if database_reviews:
         logger.info("Loaded %s reviews from database; skipping seed fallback data.", len(database_reviews))
         return database_reviews
+
+    database_url = get_database_url()
+    if not database_url.startswith("sqlite"):
+        logger.warning(
+            "No database reviews found for configured database %s; not falling back to seed data.",
+            database_url,
+        )
+        return []
 
     seed_reviews = load_seed_reviews()
     logger.info("No database reviews found; using %s seed reviews.", len(seed_reviews))

@@ -80,14 +80,16 @@ export default function RecommendationCard({
           <span className="inline-flex rounded-full border border-[var(--border)] bg-white/80 px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--muted)]">
             {`Ad signal ${recommendation.ad_score.toFixed(2)}`}
           </span>
-          <a
-            href={recommendation.amazon_url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex rounded-full border border-[var(--accent-strong)] bg-[var(--accent-soft)] px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--accent-strong)] transition duration-200 hover:-translate-y-0.5 hover:shadow-soft"
-          >
-            View on Amazon
-          </a>
+          {recommendation.amazon_url ? (
+            <a
+              href={recommendation.amazon_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex rounded-full border border-[var(--accent-strong)] bg-[var(--accent-soft)] px-[14px] py-2.5 text-[0.92rem] font-semibold text-[var(--accent-strong)] transition duration-200 hover:-translate-y-0.5 hover:shadow-soft"
+            >
+              View on Amazon
+            </a>
+          ) : null}
         </div>
       </div>
     </article>
