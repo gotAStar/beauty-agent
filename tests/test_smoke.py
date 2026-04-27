@@ -4,6 +4,7 @@ import sys
 import uuid
 
 import pytest
+from sqlalchemy.exc import SQLAlchemyError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -47,6 +48,28 @@ def test_load_reviews_reads_seed_dataset(test_db) -> None:
 
     assert len(reviews) == 4
     assert reviews[0].product == "Oil Control Cleanser"
+
+
+def test_load_reviews_falls_back_to_seed_data_when_database_query_fails(
+    test_db,
+) -> None:
+    class BrokenQuery:
+        def all(self):
+            raise SQLAlchemyError("database unavailable")
+
+    class BrokenSession:
+        def query(self, _model):
+            return BrokenQuery()
+
+    reviews = load_reviews(BrokenSession())
+
+    assert len(reviews) == 4
+    assert [review.product for review in reviews] == [
+        "Oil Control Cleanser",
+        "Acne Treatment Gel",
+        "Hydrating Cream",
+        "Lightweight Moisturizer",
+    ]
 
 
 def test_extract_review_keywords_detects_supported_categories() -> None:

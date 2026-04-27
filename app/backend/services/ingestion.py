@@ -1,7 +1,9 @@
+import logging
 import json
 from pathlib import Path
 
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.backend.db_models import ReviewRecord
 from app.backend.models.schemas import ProductReview
@@ -9,6 +11,7 @@ from app.backend.models.schemas import ProductReview
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 REVIEWS_PATH = BASE_DIR / "data" / "reviews.json"
+logger = logging.getLogger(__name__)
 
 
 def load_seed_reviews() -> list[ProductReview]:
@@ -19,7 +22,11 @@ def load_seed_reviews() -> list[ProductReview]:
 
 
 def load_database_reviews(db: Session) -> list[ProductReview]:
-    saved_reviews = db.query(ReviewRecord).all()
+    try:
+        saved_reviews = db.query(ReviewRecord).all()
+    except SQLAlchemyError as exc:
+        logger.warning("Unable to load database reviews, falling back to seed data only: %s", exc)
+        return []
 
     return [
         ProductReview(
