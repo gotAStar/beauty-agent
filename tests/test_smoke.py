@@ -103,6 +103,22 @@ def test_product_review_accepts_product_name_field_as_source_asin() -> None:
     assert review.product == "B07RBSLNFR"
 
 
+def test_product_review_accepts_explicit_asin_column() -> None:
+    review = ProductReview.model_validate(
+        {
+            "product": "Hydrating Cream",
+            "ASIN": "B07RBSLNFR",
+            "category": "moisturizer",
+            "skin_type": "dry",
+            "review": "Hydrating and gentle.",
+            "rating": 4.6,
+        }
+    )
+
+    assert review.product == "Hydrating Cream"
+    assert review.asin == "B07RBSLNFR"
+
+
 def test_extract_asin_pulls_identifier_from_product_name_text() -> None:
     assert extract_asin("ASIN: B07RBSLNFR") == "B07RBSLNFR"
     assert extract_asin("b07rbslnfr") == "B07RBSLNFR"
@@ -325,6 +341,26 @@ def test_rank_products_builds_amazon_url_from_extracted_asin() -> None:
     reviews = [
         ProductReview(
             product="ASIN: B07RBSLNFR",
+            skin_type="dry",
+            review="Hydrating and calming for dry skin",
+            rating=4.7,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="dry", concerns=["dryness"]),
+        reviews,
+    )
+
+    assert recommendations[0].asin == "B07RBSLNFR"
+    assert recommendations[0].amazon_url == "https://www.amazon.com/dp/B07RBSLNFR"
+
+
+def test_rank_products_uses_explicit_asin_column_for_amazon_url() -> None:
+    reviews = [
+        ProductReview(
+            product="Hydrating Cream",
+            asin="B07RBSLNFR",
             skin_type="dry",
             review="Hydrating and calming for dry skin",
             rating=4.7,

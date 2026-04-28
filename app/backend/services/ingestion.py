@@ -31,6 +31,7 @@ def load_database_reviews(db: Session) -> list[ProductReview]:
     return [
         ProductReview(
             product=review.product_name,
+            asin=review.product_name,
             category=review.category or "skincare",
             skin_type=review.skin_type,
             review=review.review_text,

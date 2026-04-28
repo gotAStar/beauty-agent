@@ -11,6 +11,7 @@ class UserProfileRequest(BaseModel):
 
 class ProductReview(BaseModel):
     product: str = Field(validation_alias=AliasChoices("product_name", "product"))
+    asin: str | None = Field(default=None, validation_alias=AliasChoices("ASIN", "asin"))
     category: str = Field(default="skincare")
     skin_type: str
     review: str

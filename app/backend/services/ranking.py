@@ -43,6 +43,7 @@ ASIN_PATTERN = re.compile(r"^[A-Z0-9]{10}$")
 @dataclass
 class ProductAggregate:
     asin: str
+    group_key: str
     label: str
     category: str
     skin_type: str
@@ -79,6 +80,24 @@ def extract_asin(product_name: str) -> str:
         return asin_match.group(1)
 
     return normalized_product_name
+
+
+def resolve_product_asin(review: ProductReview) -> str:
+    if review.asin and review.asin.strip():
+        normalized_asin = review.asin.strip().upper()
+        if ASIN_PATTERN.fullmatch(normalized_asin):
+            return normalized_asin
+
+    return extract_asin(review.product)
+
+
+def resolve_group_key(review: ProductReview) -> str:
+    resolved_asin = resolve_product_asin(review)
+
+    if ASIN_PATTERN.fullmatch(resolved_asin):
+        return resolved_asin
+
+    return review.product
 
 
 def calculate_promotion_score(source_reviews: list[ProductReview]) -> float:
@@ -343,7 +362,8 @@ def build_product_aggregate(
     )
 
     return ProductAggregate(
-        asin=extract_asin(representative_review.product),
+        asin=resolve_product_asin(representative_review),
+        group_key=resolve_group_key(representative_review),
         label=generate_product_label(product_reviews, grouped_category),
         category=grouped_category,
         skin_type=selected_skin_type,
@@ -380,16 +400,16 @@ def rank_products(
         source_reviews = reviews
 
     for review in reviews:
-        grouped_reviews[review.product].append(review)
+        grouped_reviews[resolve_group_key(review)].append(review)
 
     for review in source_reviews:
-        grouped_source_reviews[review.product].append(review)
+        grouped_source_reviews[resolve_group_key(review)].append(review)
 
     product_aggregates = [
         build_product_aggregate(
             user_profile,
             product_reviews,
-            grouped_source_reviews.get(product_reviews[0].product, product_reviews),
+            grouped_source_reviews.get(resolve_group_key(product_reviews[0]), product_reviews),
             normalized_skin_type,
         )
         for product_reviews in grouped_reviews.values()
