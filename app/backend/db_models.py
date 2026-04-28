@@ -10,6 +10,7 @@ class ReviewRecord(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     product_name: Mapped[str] = mapped_column(String(255), nullable=False, default="user_submitted")
+    asin: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     category: Mapped[str] = mapped_column(String(50), nullable=False, default="skincare")
     review_text: Mapped[str] = mapped_column(Text, nullable=False)
     skin_type: Mapped[str] = mapped_column(String(50), nullable=False)

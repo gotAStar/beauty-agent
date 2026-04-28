@@ -54,6 +54,7 @@ def test_load_reviews_prefers_database_reviews_when_available(test_db) -> None:
     test_db.add(
         ReviewRecord(
             product_name="B07RBSLNFR",
+            asin="B07RBSLNFR",
             category="moisturizer",
             review_text="Hydrating and gentle for dry skin.",
             skin_type="dry",
@@ -68,6 +69,28 @@ def test_load_reviews_prefers_database_reviews_when_available(test_db) -> None:
 
     assert len(reviews) == 1
     assert reviews[0].product == "B07RBSLNFR"
+
+
+def test_load_database_reviews_uses_asin_column_when_present(test_db) -> None:
+    test_db.add(
+        ReviewRecord(
+            product_name="Oil Control Cleanser",
+            asin="B00R8DXL44",
+            category="cleanser",
+            review_text="Helps reduce oil and acne.",
+            skin_type="oily",
+            rating=4.5,
+            keywords=["oily", "acne"],
+            is_ad=False,
+        )
+    )
+    test_db.commit()
+
+    reviews = load_reviews(test_db)
+
+    assert len(reviews) == 1
+    assert reviews[0].product == "Oil Control Cleanser"
+    assert reviews[0].asin == "B00R8DXL44"
 
 
 def test_load_reviews_falls_back_to_seed_for_non_sqlite_database_when_empty(
