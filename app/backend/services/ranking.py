@@ -10,7 +10,8 @@ from app.backend.services.explain import (
     get_concern_keyword_hits,
     get_normalized_concerns,
 )
-from app.backend.services.filtering import calculate_ad_score
+from app.backend.services.filtering import AD_SCORE_THRESHOLD, calculate_ad_score
+from app.backend.services.trust import calculate_consistency_ratio
 
 
 SKIN_TYPE_WEIGHT = 30
@@ -49,10 +50,16 @@ class ProductAggregate:
     representative_review: ProductReview
     supporting_reviews: list[ProductReview]
     review_count: int
+    source_review_count: int
     matched_skin_type: bool
     concern_hits: dict[str, list[str]]
     total_keyword_hits: int
     average_ad_score: float
+    promotion_score: float
+    consistency_score: int
+    hidden_gem_score: int
+    product_classification: str
+    marketing_bias_warning: str | None
     score_breakdown: dict[str, float]
     score: float
 
@@ -72,6 +79,57 @@ def extract_asin(product_name: str) -> str:
         return asin_match.group(1)
 
     return normalized_product_name
+
+
+def calculate_promotion_score(source_reviews: list[ProductReview]) -> float:
+    if not source_reviews:
+        return 0.0
+
+    promotional_reviews = sum(
+        1 for review in source_reviews if calculate_ad_score(review) >= AD_SCORE_THRESHOLD
+    )
+    return round(promotional_reviews / len(source_reviews), 2)
+
+
+def calculate_consistency_score(valid_reviews: list[ProductReview]) -> int:
+    ratings = [review.rating for review in valid_reviews]
+    return round(calculate_consistency_ratio(ratings) * 100)
+
+
+def calculate_hidden_gem_score(
+    promotion_score: float,
+    consistency_score: int,
+    average_rating: float,
+) -> int:
+    hidden_gem_score = (
+        (1 - promotion_score) * 40
+        + (consistency_score / 100) * 30
+        + (average_rating / 5) * 30
+    )
+    return max(0, min(100, round(hidden_gem_score)))
+
+
+def classify_product(
+    promotion_score: float,
+    consistency_score: int,
+    average_rating: float,
+) -> tuple[str, str | None]:
+    if promotion_score >= 0.35 or (promotion_score >= 0.2 and consistency_score < 60):
+        return (
+            "Trending but risky",
+            "Marketing bias warning: a large share of this product's reviews show promotional patterns.",
+        )
+
+    if promotion_score <= 0.1 and consistency_score >= 75 and average_rating >= 4.2:
+        return (
+            "Hidden gem",
+            None,
+        )
+
+    return (
+        "Balanced choice",
+        None,
+    )
 
 
 def count_concern_keyword_frequency(
@@ -241,12 +299,25 @@ def build_score_breakdown(
 def build_product_aggregate(
     user_profile: UserProfileRequest,
     product_reviews: list[ProductReview],
+    source_reviews: list[ProductReview],
     normalized_skin_type: str,
 ) -> ProductAggregate:
     grouped_category = infer_category(product_reviews)
     representative_review = select_representative_review(user_profile, product_reviews)
     selected_skin_type, matched_skin_type = select_skin_type(product_reviews, normalized_skin_type)
     average_rating = round(mean(review.rating for review in product_reviews), 2)
+    promotion_score = calculate_promotion_score(source_reviews)
+    consistency_score = calculate_consistency_score(product_reviews)
+    hidden_gem_score = calculate_hidden_gem_score(
+        promotion_score,
+        consistency_score,
+        average_rating,
+    )
+    product_classification, marketing_bias_warning = classify_product(
+        promotion_score,
+        consistency_score,
+        average_rating,
+    )
     (
         score_breakdown,
         _,
@@ -280,10 +351,16 @@ def build_product_aggregate(
         representative_review=representative_review,
         supporting_reviews=product_reviews,
         review_count=len(product_reviews),
+        source_review_count=len(source_reviews),
         matched_skin_type=matched_skin_type,
         concern_hits=concern_hits,
         total_keyword_hits=total_keyword_hits,
         average_ad_score=average_ad_score,
+        promotion_score=promotion_score,
+        consistency_score=consistency_score,
+        hidden_gem_score=hidden_gem_score,
+        product_classification=product_classification,
+        marketing_bias_warning=marketing_bias_warning,
         score_breakdown=score_breakdown,
         score=score,
     )
@@ -292,16 +369,29 @@ def build_product_aggregate(
 def rank_products(
     user_profile: UserProfileRequest,
     reviews: list[ProductReview],
+    source_reviews: list[ProductReview] | None = None,
     limit: int = 3,
 ) -> tuple[list[Recommendation], str]:
     normalized_skin_type = user_profile.skin_type.strip().lower()
     grouped_reviews: dict[str, list[ProductReview]] = defaultdict(list)
+    grouped_source_reviews: dict[str, list[ProductReview]] = defaultdict(list)
+
+    if source_reviews is None:
+        source_reviews = reviews
 
     for review in reviews:
         grouped_reviews[review.product].append(review)
 
+    for review in source_reviews:
+        grouped_source_reviews[review.product].append(review)
+
     product_aggregates = [
-        build_product_aggregate(user_profile, product_reviews, normalized_skin_type)
+        build_product_aggregate(
+            user_profile,
+            product_reviews,
+            grouped_source_reviews.get(product_reviews[0].product, product_reviews),
+            normalized_skin_type,
+        )
         for product_reviews in grouped_reviews.values()
     ]
     exact_matches = [
@@ -338,6 +428,11 @@ def rank_products(
             score=aggregate.score,
             review=aggregate.representative_review.review,
             ad_score=aggregate.average_ad_score,
+            promotion_score=aggregate.promotion_score,
+            consistency_score=aggregate.consistency_score,
+            hidden_gem_score=aggregate.hidden_gem_score,
+            product_classification=aggregate.product_classification,
+            marketing_bias_warning=aggregate.marketing_bias_warning,
             matched_skin_type=aggregate.matched_skin_type,
             reason=build_recommendation_reason(
                 user_profile,

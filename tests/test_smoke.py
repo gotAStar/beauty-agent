@@ -297,6 +297,8 @@ def test_rank_products_prioritizes_skin_type_match_then_rating() -> None:
     assert recommendations[0].matched_skin_type is True
     assert recommendations[2].matched_skin_type is False
     assert recommendations[0].ad_score == 0.0
+    assert recommendations[0].promotion_score == 0.0
+    assert recommendations[0].product_classification == "Balanced choice"
     assert recommendations[0].score > recommendations[1].score
 
 
@@ -469,6 +471,75 @@ def test_rank_products_penalizes_mild_promotional_language() -> None:
     assert "ad penalty" in recommendations[1].reason
 
 
+def test_rank_products_flags_trending_but_risky_products_from_raw_review_mix() -> None:
+    source_reviews = [
+        ProductReview(
+            product="B07RISKY99",
+            skin_type="combination",
+            review="Lightweight gel that feels nice",
+            rating=4.4,
+        ),
+        ProductReview(
+            product="B07RISKY99",
+            skin_type="combination",
+            review="Amazing must buy gel, best ever",
+            rating=4.9,
+        ),
+        ProductReview(
+            product="B07SAFE123",
+            skin_type="combination",
+            review="Steady hydration and good balance",
+            rating=4.3,
+        ),
+    ]
+
+    filtered_reviews, _ = filter_reviews(source_reviews)
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="combination"),
+        filtered_reviews,
+        source_reviews,
+    )
+
+    risky_recommendation = next(
+        recommendation
+        for recommendation in recommendations
+        if recommendation.asin == "B07RISKY99"
+    )
+
+    assert risky_recommendation.promotion_score == 0.5
+    assert risky_recommendation.product_classification == "Trending but risky"
+    assert risky_recommendation.marketing_bias_warning is not None
+
+
+def test_rank_products_highlights_hidden_gem_products() -> None:
+    reviews = [
+        ProductReview(
+            product="B07GEM0001",
+            skin_type="dry",
+            review="Hydrating and soothing cream",
+            rating=4.8,
+        ),
+        ProductReview(
+            product="B07GEM0001",
+            skin_type="dry",
+            review="Very moisturizing and calming for dry skin",
+            rating=4.7,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="dry", concerns=["dryness"]),
+        reviews,
+        reviews,
+    )
+
+    assert recommendations[0].asin == "B07GEM0001"
+    assert recommendations[0].consistency_score >= 75
+    assert recommendations[0].hidden_gem_score >= 80
+    assert recommendations[0].product_classification == "Hidden gem"
+    assert recommendations[0].marketing_bias_warning is None
+
+
 def test_profile_route_returns_top_three_recommendations(test_db) -> None:
     response = asyncio.run(
         create_user_profile(UserProfileRequest(skin_type="combination"), db=test_db),
@@ -486,6 +557,7 @@ def test_profile_route_returns_top_three_recommendations(test_db) -> None:
     assert response.final_decision.chosen_product is not None
     assert response.final_decision.chosen_product.asin == "Lightweight Moisturizer"
     assert 0 <= response.final_decision.confidence_score <= 100
+    assert response.final_decision.chosen_product.product_classification == "Balanced choice"
     assert response.recommendations[0].asin == "Lightweight Moisturizer"
     assert response.recommendations[0].label == "Oil Control Moisturizer"
     assert response.recommendations[0].score >= response.recommendations[1].score

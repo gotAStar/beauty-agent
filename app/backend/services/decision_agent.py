@@ -40,6 +40,14 @@ def _build_decision_tradeoffs(
             f"Some supporting reviews have light promotional language risk (ad score {chosen_product.ad_score:.2f})."
         )
 
+    if chosen_product.marketing_bias_warning:
+        trade_offs.append(chosen_product.marketing_bias_warning)
+
+    if chosen_product.product_classification == "Hidden gem":
+        trade_offs.append(
+            "This looks like a hidden gem: low promotion signals, high review agreement, and strong ratings."
+        )
+
     if alternatives:
         strongest_alternative = alternatives[0]
         if strongest_alternative.rating > chosen_product.rating:
@@ -49,6 +57,10 @@ def _build_decision_tradeoffs(
         elif strongest_alternative.review_count > chosen_product.review_count:
             trade_offs.append(
                 f"{strongest_alternative.label} has broader review support, but its total personalization score was lower."
+            )
+        if strongest_alternative.product_classification == "Hidden gem":
+            trade_offs.append(
+                f"{strongest_alternative.label} looked like a hidden gem too, but its personalization score was lower."
             )
 
     if not trade_offs:
@@ -66,6 +78,8 @@ def _build_confidence_score(
         + (chosen_product.score * 0.4)
         + (min(chosen_product.review_count, 5) * 3)
         + (6 if chosen_product.matched_skin_type else 0)
+        + (5 if chosen_product.product_classification == "Hidden gem" else 0)
+        - (chosen_product.promotion_score * 8)
     )
     return max(0, min(100, round(confidence_score)))
 
@@ -87,7 +101,10 @@ def _build_final_decision(
     alternatives = recommendations[1:]
     reasoning = (
         f"{chosen_product.label} is the agent's top choice because it achieved the highest overall decision score "
-        f"({chosen_product.score:.1f}) after review filtering and product ranking. {chosen_product.reason}"
+        f"({chosen_product.score:.1f}) after review filtering and product ranking. "
+        f"It is classified as {chosen_product.product_classification.lower()} with "
+        f"a hidden gem score of {chosen_product.hidden_gem_score}/100 and "
+        f"a promotion score of {chosen_product.promotion_score:.2f}. {chosen_product.reason}"
     )
 
     return FinalDecision(
@@ -169,8 +186,20 @@ def decision_agent(
         )
     )
 
-    recommendations, strategy = rank_products(user_profile, filtered_reviews)
+    recommendations, strategy = rank_products(
+        user_profile,
+        filtered_reviews,
+        category_reviews,
+    )
     unique_products = len({review.product for review in filtered_reviews})
+    hidden_gem_count = sum(
+        1 for recommendation in recommendations if recommendation.product_classification == "Hidden gem"
+    )
+    risky_count = sum(
+        1
+        for recommendation in recommendations
+        if recommendation.product_classification == "Trending but risky"
+    )
     agent_steps.append(
         AgentStep(
             key="ranking",
@@ -180,10 +209,13 @@ def decision_agent(
                 f"Evaluated {unique_products} product candidate(s) after grouping reviews by product.",
                 f"Used the {strategy} strategy to prioritize the shortlist.",
                 f"Produced {len(recommendations)} recommendation candidate(s).",
+                f"Detected {hidden_gem_count} hidden gem candidate(s) and {risky_count} product(s) with higher marketing bias.",
             ],
             metrics={
                 "products_ranked": unique_products,
                 "shortlist_size": len(recommendations),
+                "hidden_gems": hidden_gem_count,
+                "risky_products": risky_count,
                 "match_strategy": strategy,
             },
         )
@@ -200,6 +232,7 @@ def decision_agent(
         decision_details = [
             f"Selected {final_decision.chosen_product.label} as the strongest product-level decision.",
             f"Confidence score: {final_decision.confidence_score}/100.",
+            f"Product classification: {final_decision.chosen_product.product_classification}.",
         ]
     else:
         decision_details = [

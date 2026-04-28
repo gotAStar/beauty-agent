@@ -10,6 +10,16 @@ VALID_REVIEW_TARGET = 5
 MAX_RATING_STD_DEV = 1.5
 
 
+def calculate_consistency_ratio(ratings: list[float]) -> float:
+    if not ratings:
+        return 0.0
+
+    if len(ratings) == 1:
+        return 0.5
+
+    return max(0.0, 1 - (pstdev(ratings) / MAX_RATING_STD_DEV))
+
+
 def calculate_trust_score(
     valid_reviews: list[ProductReview],
     filtered_reviews_count: int,
@@ -25,13 +35,7 @@ def calculate_trust_score(
     ad_filter_score = (1 - filtered_ratio) * AD_FILTER_WEIGHT
 
     ratings = [review.rating for review in valid_reviews]
-    if not ratings:
-        consistency_ratio = 0.0
-    elif len(ratings) == 1:
-        consistency_ratio = 0.5
-    else:
-        consistency_ratio = max(0.0, 1 - (pstdev(ratings) / MAX_RATING_STD_DEV))
-
+    consistency_ratio = calculate_consistency_ratio(ratings)
     consistency_score = consistency_ratio * CONSISTENCY_WEIGHT
 
     return round(valid_review_score + ad_filter_score + consistency_score)

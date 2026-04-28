@@ -6,6 +6,12 @@ const toneClassMap = {
   neutral: "text-[var(--accent-strong)]",
 };
 
+const classificationStyles = {
+  "Hidden gem": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Trending but risky": "bg-amber-50 text-amber-700 border-amber-200",
+  "Balanced choice": "bg-[#fbf8fa] text-[var(--text)] border-[#ece3e8]",
+};
+
 export default function DecisionSummaryCard({ finalDecision, trustScore }) {
   if (!finalDecision) {
     return null;
@@ -43,9 +49,15 @@ export default function DecisionSummaryCard({ finalDecision, trustScore }) {
   }
 
   const signals = buildSignalItems(chosenProduct);
+  const cardBorderClass =
+    chosenProduct.product_classification === "Hidden gem"
+      ? "border-emerald-300"
+      : chosenProduct.product_classification === "Trending but risky"
+        ? "border-amber-300"
+        : "border-[var(--accent-strong)]";
 
   return (
-    <article className="mt-5 rounded-[24px] border border-[var(--accent-strong)] bg-white p-6 shadow-[0_22px_55px_rgba(184,165,175,0.22)]">
+    <article className={`mt-5 rounded-[24px] border bg-white p-6 shadow-[0_22px_55px_rgba(184,165,175,0.22)] ${cardBorderClass}`}>
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
@@ -70,6 +82,9 @@ export default function DecisionSummaryCard({ finalDecision, trustScore }) {
       </div>
 
       <div className="mt-5 flex flex-wrap gap-2.5 text-[0.92rem] text-[var(--muted)]">
+        <span className={`rounded-full border px-3 py-2 font-semibold ${classificationStyles[chosenProduct.product_classification] || classificationStyles["Balanced choice"]}`}>
+          {chosenProduct.product_classification}
+        </span>
         <span className="rounded-full bg-[#fbf8fa] px-3 py-2">
           {formatCategory(chosenProduct.category)}
         </span>
@@ -85,7 +100,28 @@ export default function DecisionSummaryCard({ finalDecision, trustScore }) {
         <span className="rounded-full bg-[#fbf8fa] px-3 py-2">
           {`${chosenProduct.score.toFixed(1)} score`}
         </span>
+        <span className="rounded-full bg-[#fbf8fa] px-3 py-2">
+          {`Promotion ${Math.round(chosenProduct.promotion_score * 100)}%`}
+        </span>
+        <span className="rounded-full bg-[#fbf8fa] px-3 py-2">
+          {`Consistency ${chosenProduct.consistency_score}/100`}
+        </span>
+        <span className="rounded-full bg-[#fbf8fa] px-3 py-2">
+          {`Hidden gem ${chosenProduct.hidden_gem_score}/100`}
+        </span>
       </div>
+
+      {chosenProduct.marketing_bias_warning ? (
+        <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[15px] leading-7 text-amber-800">
+          {chosenProduct.marketing_bias_warning}
+        </div>
+      ) : null}
+
+      {chosenProduct.product_classification === "Hidden gem" ? (
+        <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[15px] leading-7 text-emerald-800">
+          Hidden gem highlight: this product shows low promotion, high review agreement, and strong ratings.
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-3">
         {signals.map((signal) => (

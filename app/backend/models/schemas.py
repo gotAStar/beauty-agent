@@ -29,6 +29,11 @@ class Recommendation(BaseModel):
     score: float
     review: str
     ad_score: float
+    promotion_score: float
+    consistency_score: int
+    hidden_gem_score: int
+    product_classification: str
+    marketing_bias_warning: str | None = None
     matched_skin_type: bool
     reason: str
 
