@@ -376,6 +376,26 @@ def test_rank_products_uses_explicit_asin_column_for_amazon_url() -> None:
     assert recommendations[0].amazon_url == "https://www.amazon.com/dp/B07RBSLNFR"
 
 
+def test_rank_products_uses_explicit_asin_value_verbatim_for_button_link() -> None:
+    reviews = [
+        ProductReview(
+            product="Hydrating Cream",
+            asin="p22d8ddq",
+            skin_type="dry",
+            review="Hydrating and calming for dry skin",
+            rating=4.7,
+        ),
+    ]
+
+    recommendations, _ = rank_products(
+        UserProfileRequest(skin_type="dry", concerns=["dryness"]),
+        reviews,
+    )
+
+    assert recommendations[0].asin == "p22d8ddq"
+    assert recommendations[0].amazon_url == "https://www.amazon.com/dp/p22d8ddq"
+
+
 def test_rank_products_boosts_concern_matches_in_review_text() -> None:
     reviews = [
         ProductReview(

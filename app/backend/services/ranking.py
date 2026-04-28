@@ -44,6 +44,7 @@ ASIN_PATTERN = re.compile(r"^[A-Z0-9]{10}$")
 class ProductAggregate:
     asin: str
     group_key: str
+    amazon_url: str
     label: str
     category: str
     skin_type: str
@@ -84,9 +85,7 @@ def extract_asin(product_name: str) -> str:
 
 def resolve_product_asin(review: ProductReview) -> str:
     if review.asin and review.asin.strip():
-        normalized_asin = review.asin.strip().upper()
-        if ASIN_PATTERN.fullmatch(normalized_asin):
-            return normalized_asin
+        return review.asin.strip()
 
     return extract_asin(review.product)
 
@@ -94,10 +93,21 @@ def resolve_product_asin(review: ProductReview) -> str:
 def resolve_group_key(review: ProductReview) -> str:
     resolved_asin = resolve_product_asin(review)
 
-    if ASIN_PATTERN.fullmatch(resolved_asin):
+    if review.asin and review.asin.strip():
+        return resolved_asin
+
+    if ASIN_PATTERN.fullmatch(resolved_asin.upper()):
         return resolved_asin
 
     return review.product
+
+
+def resolve_amazon_url(review: ProductReview) -> str:
+    if review.asin and review.asin.strip():
+        return f"https://www.amazon.com/dp/{review.asin.strip()}"
+
+    resolved_asin = extract_asin(review.product)
+    return build_amazon_url(resolved_asin)
 
 
 def calculate_promotion_score(source_reviews: list[ProductReview]) -> float:
@@ -364,6 +374,7 @@ def build_product_aggregate(
     return ProductAggregate(
         asin=resolve_product_asin(representative_review),
         group_key=resolve_group_key(representative_review),
+        amazon_url=resolve_amazon_url(representative_review),
         label=generate_product_label(product_reviews, grouped_category),
         category=grouped_category,
         skin_type=selected_skin_type,
@@ -444,7 +455,7 @@ def rank_products(
             rating=aggregate.average_rating,
             review_count=aggregate.review_count,
             keyword_frequency=aggregate.total_keyword_hits,
-            amazon_url=build_amazon_url(aggregate.asin),
+            amazon_url=aggregate.amazon_url,
             score=aggregate.score,
             review=aggregate.representative_review.review,
             ad_score=aggregate.average_ad_score,
