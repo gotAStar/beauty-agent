@@ -80,6 +80,19 @@ export default function ReviewView({
               </select>
             </FieldLabel>
 
+            <FieldLabel htmlFor="review_brand_name">
+              <span>Brand name</span>
+              <InputBase
+                id="review_brand_name"
+                type="text"
+                name="review_brand_name"
+                required
+                value={reviewValues.review_brand_name}
+                onChange={onReviewChange}
+                placeholder="Brand or product line"
+              />
+            </FieldLabel>
+
             <FieldLabel htmlFor="review_text">
               <span>Your review</span>
               <InputBase

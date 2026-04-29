@@ -83,6 +83,11 @@ def init_database() -> None:
         existing_columns = {column["name"] for column in inspector.get_columns("reviews")}
 
         with engine.begin() as connection:
+            if "brand_name" not in existing_columns:
+                connection.execute(
+                    text("ALTER TABLE reviews ADD COLUMN brand_name VARCHAR(255)")
+                )
+
             if "asin" not in existing_columns:
                 connection.execute(
                     text("ALTER TABLE reviews ADD COLUMN asin VARCHAR(255)")

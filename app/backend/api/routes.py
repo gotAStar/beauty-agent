@@ -57,6 +57,7 @@ async def create_review(
 
     review_record = ReviewRecord(
         product_name="user_submitted",
+        brand_name=payload.brand_name,
         category=payload.category,
         review_text=payload.review_text,
         skin_type=payload.skin_type,
@@ -70,6 +71,7 @@ async def create_review(
     logger.info(
         "Stored user review: %s",
         {
+            "brand_name": payload.brand_name,
             "category": payload.category,
             "skin_type": payload.skin_type,
             "rating": payload.rating,

@@ -733,6 +733,7 @@ def test_review_submission_saves_to_database(test_db) -> None:
         create_review(
             ReviewSubmissionRequest(
                 category="treatment",
+                brand_name="ClearSkin Labs",
                 review_text="Hydrating formula that helped my acne and oily skin.",
                 skin_type="oily",
                 rating=4.8,
@@ -748,6 +749,7 @@ def test_review_submission_saves_to_database(test_db) -> None:
     assert response.is_ad is False
     assert len(saved_reviews) == 1
     assert saved_reviews[0].product_name == "user_submitted"
+    assert saved_reviews[0].brand_name == "ClearSkin Labs"
     assert saved_reviews[0].category == "treatment"
     assert saved_reviews[0].keywords == ["acne", "oily", "hydration"]
 
@@ -755,6 +757,7 @@ def test_review_submission_saves_to_database(test_db) -> None:
 def test_review_submission_allows_duplicate_review_text(test_db) -> None:
     payload = ReviewSubmissionRequest(
         category="moisturizer",
+        brand_name="Soft Glow",
         review_text="Same text review",
         skin_type="dry",
         rating=4.1,
@@ -773,6 +776,7 @@ def test_review_submission_flags_promotional_content(test_db) -> None:
         create_review(
             ReviewSubmissionRequest(
                 category="cleanser",
+                brand_name="Glow Market",
                 review_text="Buy now, best ever cleanser with discount today",
                 skin_type="combination",
                 rating=4.7,
@@ -789,6 +793,7 @@ def test_submitted_reviews_are_included_in_recommendations(test_db) -> None:
         create_review(
             ReviewSubmissionRequest(
                 category="moisturizer",
+                brand_name="Deep Dew",
                 review_text="Hydrating support for dry skin with great moisture",
                 skin_type="dry",
                 rating=5.0,

@@ -15,6 +15,7 @@ const defaultProfileValues = {
 
 const defaultReviewValues = {
   review_category: "moisturizer",
+  review_brand_name: "",
   review_text: "",
   review_skin_type: "combination",
   review_rating: "4.0",
@@ -228,6 +229,7 @@ export default function App() {
 
     const payload = {
       category: reviewValues.review_category,
+      brand_name: reviewValues.review_brand_name.trim(),
       review_text: reviewValues.review_text.trim(),
       skin_type: reviewValues.review_skin_type,
       rating: Number(reviewValues.review_rating),

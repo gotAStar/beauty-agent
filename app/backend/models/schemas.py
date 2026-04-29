@@ -68,6 +68,7 @@ class UserProfileResponse(BaseModel):
 
 class ReviewSubmissionRequest(BaseModel):
     category: str = Field(default="skincare", min_length=1)
+    brand_name: str = Field(min_length=1)
     review_text: str = Field(min_length=1)
     skin_type: str = Field(min_length=1)
     rating: float = Field(ge=0, le=5)
