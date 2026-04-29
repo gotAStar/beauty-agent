@@ -1,6 +1,7 @@
 [
   {
     "product": "Oil Control Cleanser",
+    "ASIN": "B00R8DXL44",
     "category": "cleanser",
     "skin_type": "oily",
     "review": "Helps reduce oil and acne",
@@ -8,6 +9,7 @@
   },
   {
     "product": "Acne Treatment Gel",
+    "ASIN": "B07RBSLNFR",
     "category": "treatment",
     "skin_type": "oily",
     "review": "Reduced my breakouts significantly",
@@ -15,6 +17,7 @@
   },
   {
     "product": "Hydrating Cream",
+    "ASIN": "B07W397QG4",
     "category": "moisturizer",
     "skin_type": "dry",
     "review": "Very moisturizing and gentle",
@@ -22,6 +25,7 @@
   },
   {
     "product": "Lightweight Moisturizer",
+    "ASIN": "B07NSR3CKR",
     "category": "moisturizer",
     "skin_type": "combination",
     "review": "Doesn't feel greasy, good balance",

@@ -48,6 +48,7 @@ def test_load_reviews_reads_seed_dataset(test_db) -> None:
 
     assert len(reviews) == 4
     assert reviews[0].product == "Oil Control Cleanser"
+    assert reviews[0].asin == "B00R8DXL44"
 
 
 def test_load_reviews_prefers_database_reviews_when_available(test_db) -> None:
@@ -634,10 +635,10 @@ def test_profile_route_returns_top_three_recommendations(test_db) -> None:
     assert response.agent_steps[-1].key == "decision"
     assert len(response.recommendations) == 3
     assert response.final_decision.chosen_product is not None
-    assert response.final_decision.chosen_product.asin == "Lightweight Moisturizer"
+    assert response.final_decision.chosen_product.asin == "B07NSR3CKR"
     assert 0 <= response.final_decision.confidence_score <= 100
     assert response.final_decision.chosen_product.product_classification == "Balanced choice"
-    assert response.recommendations[0].asin == "Lightweight Moisturizer"
+    assert response.recommendations[0].asin == "B07NSR3CKR"
     assert response.recommendations[0].label == "Oil Control Moisturizer"
     assert response.recommendations[0].score >= response.recommendations[1].score
     assert "top choice" in response.final_decision.reasoning
@@ -655,12 +656,12 @@ def test_profile_route_uses_concern_keywords_for_dataset(test_db) -> None:
         )
     )
 
-    assert response.recommendations[0].asin == "Hydrating Cream"
+    assert response.recommendations[0].asin == "B07W397QG4"
     assert response.recommendations[0].label == "Hydrating Moisturizer"
     assert "Very moisturizing and gentle" in response.recommendations[0].reason
     assert "dryness support" in response.recommendations[0].reason
     assert response.final_decision.chosen_product is not None
-    assert response.final_decision.chosen_product.asin == "Hydrating Cream"
+    assert response.final_decision.chosen_product.asin == "B07W397QG4"
 
 
 def test_profile_route_filters_by_category_first(test_db) -> None:
@@ -677,7 +678,7 @@ def test_profile_route_filters_by_category_first(test_db) -> None:
 
     assert response.total_reviews_analyzed == 1
     assert [recommendation.asin for recommendation in response.recommendations] == [
-        "Oil Control Cleanser"
+        "B00R8DXL44"
     ]
 
 
